@@ -1,0 +1,80 @@
+Configs: {
+	RandomizerConfig: {
+		DisplayName: Enemy Randomizer
+
+		IncludeOppositeEvil: {
+			Label: Include opposite-evil enemies in Hardmode
+			Tooltip: Include all enemies from the other world evil in the Hardmode pool, including its pre-Hardmode enemies. In combined-pool mode they join the combined pool. Off excludes them from replacement targets. On by default. Changes mappings.
+		}
+
+		RandomizeTownShimmer: {
+			Label: Randomize town NPC shimmer appearance
+			Tooltip: Give supported town NPCs a 50% chance of their shimmer appearance when spawned or rescued. Off leaves vanilla appearance behavior intact. Does not change existing NPCs or mappings. On by default.
+		}
+
+		RandomizeTownNpcs: {
+			Label: Include town NPCs in randomization
+			Tooltip: Add ordinary resident town NPCs to the normal mapping pools. Their spawns can become enemies, and enemies can become town NPCs. Pets, rescue forms, and special NPCs remain protected. Off by default. Changes mappings.
+		}
+
+		GroupOldOnesArmyTiers: {
+			Label: Group Old One's Army enemy tiers
+			Tooltip: Group tiers of the same Old One's Army enemy and choose a tier randomly per replacement. Respects separate pre-Hardmode and Hardmode pools. Independent of banner grouping. Off keeps tiers separate. On by default. Changes mappings.
+		}
+
+		LimitBosses: {
+			Label: Limit each boss to one active encounter
+			Tooltip: On: prevent duplicate bosses of the same type. Off: allow multiple encounters, including multiple pairs of Twins. Miniboss limits have their own setting. On by default. Does not change mappings.
+		}
+
+		GroupGoldCritters: {
+			Label: Group critters with their gold variants
+			Tooltip: Share one mapping for each critter family and its gold variants. Each replacement has a 10% gold chance and a 90% normal chance. Independent of banner grouping. On by default. Changing this rebuilds mappings.
+		}
+
+		EarlyEvilSolutionShimmer: {
+			Label: Shimmer evil solutions at any time
+			Tooltip: Allow Red Solution and Purple Solution to shimmer into each other at any progression stage. No Moon Lord defeat required. Off restores the normal conversions. On by default. Does not change enemy mappings.
+		}
+
+		PreserveNpcChildren: {
+			Label: Keep NPC-spawned creatures unchanged
+			Tooltip: On: creatures spawned by other NPCs keep their original species, including helpers spawned through projectiles. Off: randomize them normally. Required boss parts stay intact in either mode. Event portals and the Cultist ritual still produce randomized encounters. On by default.
+		}
+
+		LimitMiniBosses: {
+			Label: Include minibosses in the one-at-a-time limit
+			Tooltip: Limit each miniboss type to one active encounter, including event minibosses, biome mimics, Dreadnautilus, Mothron, Ice Golem, Sand Elemental, Paladin, Goblin Warlock, and Pirate Captain. Full bosses have their own limit setting. On by default.
+		}
+
+		SeparateProgressionPools: {
+			Label: Separate pre-Hardmode and Hardmode pools
+			Tooltip: On: keep separate progression pools. Off: shuffle all eligible NPCs together, allowing Hardmode and both world evils from the start. Boss restrictions and protected NPC exclusions still apply. Changing this rebuilds mappings for future spawns.
+		}
+
+		ExcludeBosses: {
+			Label: Exclude bosses from randomization
+			Tooltip: Keep bosses as their original spawns and remove them from replacement targets, including event bosses. Off by default. Changes mappings; does not remove existing bosses or disable their normal summons.
+		}
+
+		CombineTwins: {
+			Label: Treat the Twins as one encounter
+			Tooltip: Share one mapping for Retinazer and Spazmatism. Their replacement encounter spawns both Twins together. On by default. Changes the Hardmode mapping; direct NPC commands still spawn exactly the requested NPC.
+		}
+
+		GroupNpcVariants: {
+			Label: Group NPC variants by banner
+			Tooltip: Treat NPCs sharing a banner as one mapping entry and randomly choose a variant per spawn. Respects the separate progression pools setting. Changing this rebuilds mappings for future spawns.
+		}
+
+		LegacyEventCredit: {
+			Label: Legacy event kill credit
+			Tooltip: Off: event progress follows the seeded replacement enemies. On: actual vanilla event enemies count, as in v0.7. Goblin Scouts do not award invasion credit. Progress bars stay visible in either mode. Applies to all players.
+		}
+
+		LegacyPillarCredit: {
+			Label: Legacy pillar kill credit
+			Tooltip: Off: killing the seeded replacements of a pillar's enemies reduces its shield. On: actual pillar enemies count, as in v0.7. Kills count anywhere on the map in either mode. Applies to all players.
+		}
+	}
+}

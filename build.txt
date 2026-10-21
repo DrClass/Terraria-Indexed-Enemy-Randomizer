@@ -1,0 +1,4 @@
+displayName = Enemy Randomizer
+author = DrClass
+version = 0.18.0
+buildIgnore = .tools/*, .inspection/*, Tests/*, bin/*, obj/*, README.md, .gitignore

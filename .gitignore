@@ -1,0 +1,7 @@
+bin/
+obj/
+.tools/
+.inspection/
+.vs/
+Tests/bin/
+Tests/obj/

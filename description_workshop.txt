@@ -1,0 +1,6 @@
+Enemy Randomizer gives each eligible vanilla enemy, boss, passive creature, and critter a consistent replacement using a seeded shuffle.
+
+Currently only supports vanilla.
+
+/spawnnpc <name or ID> spawns the actual NPC directly, while respecting the one-boss limit.
+/hint <name or ID> tells you which original NPC that creature replaces, so you know which spawns to look for.

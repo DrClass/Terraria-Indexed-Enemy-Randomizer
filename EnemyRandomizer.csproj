@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<!-- Import tModLoader mod properties -->
+	<Import Project="..\tModLoader.targets" />
+
+	<!-- General -->
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<LangVersion>12.0</LangVersion>
+	</PropertyGroup>
+
+	<!-- References -->
+	<ItemGroup>
+		<Compile Remove=".inspection/**;Tests/**;.tools/**" />
+	</ItemGroup>
+
+</Project>

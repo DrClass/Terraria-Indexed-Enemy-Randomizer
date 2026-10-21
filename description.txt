@@ -1,0 +1,5 @@
+Randomizes enemies, bosses, passive creatures, and critters using your world seed.
+
+Currently only supports vanilla.
+
+Use /spawnnpc <name or ID> for an actual, unrandomized NPC, or /hint <name or ID> to find its source spawn.
