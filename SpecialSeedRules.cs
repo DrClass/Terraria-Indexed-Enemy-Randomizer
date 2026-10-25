@@ -2,7 +2,7 @@ using Terraria;
 using Terraria.ID;
 using Terraria.ModLoader;
 
-namespace EnemyRandomizer;
+namespace IndexedEnemyRandomizer;
 
 /// <summary>
 /// Restricts seed-exclusive targets and preserves vanilla's assembled Mechdusa encounter on eligible worlds.

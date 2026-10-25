@@ -8,7 +8,7 @@ using Terraria.GameContent.Events;
 using Terraria.ID;
 using Terraria.ModLoader;
 
-namespace EnemyRandomizer;
+namespace IndexedEnemyRandomizer;
 
 /// <summary>
 /// Makes event accounting follow the original species that maps to a slain replacement.

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 
-namespace EnemyRandomizer;
+namespace IndexedEnemyRandomizer;
 
 /// <summary>
 /// Immutable name aliases and net ID for one NPC, independent of Terraria's live content tables.

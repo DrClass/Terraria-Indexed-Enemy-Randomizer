@@ -1,4 +1,4 @@
-Enemy Randomizer gives each eligible vanilla enemy, boss, passive creature, and critter a consistent replacement using a seeded shuffle.
+Indexed Enemy Randomizer gives each eligible vanilla enemy, boss, passive creature, and critter a consistent replacement using a seeded shuffle.
 
 Currently only supports vanilla.
 

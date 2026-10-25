@@ -7,7 +7,7 @@ using Terraria.ID;
 using Terraria.ModLoader;
 using Terraria.ModLoader.IO;
 
-namespace EnemyRandomizer;
+namespace IndexedEnemyRandomizer;
 
 /// <summary>
 /// Schedules host-side NPC replacement and applies it immediately before the first AI update.

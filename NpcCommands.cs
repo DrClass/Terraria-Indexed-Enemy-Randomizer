@@ -8,7 +8,7 @@ using Terraria.DataStructures;
 using Terraria.ID;
 using Terraria.ModLoader;
 
-namespace EnemyRandomizer;
+namespace IndexedEnemyRandomizer;
 
 // Mark only this NPC spawn. Children created later by its AI still obey the
 // normal randomizer/part rules; no global bypass flag can leak to other spawns.
@@ -21,7 +21,7 @@ internal sealed class DirectNpcSpawnSource : IEntitySource
     /// <summary>
     /// Diagnostic source context used to identify direct command/companion spawns.
     /// </summary>
-    public string Context => "EnemyRandomizer:spawnnpc";
+    public string Context => "IndexedEnemyRandomizer:spawnnpc";
 }
 
 /// <summary>

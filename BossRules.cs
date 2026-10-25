@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Terraria;
 using Terraria.ID;
 
-namespace EnemyRandomizer;
+namespace IndexedEnemyRandomizer;
 
 /// <summary>
 /// Defines encounter families, independent boss/miniboss limits, and biome-override eligibility.

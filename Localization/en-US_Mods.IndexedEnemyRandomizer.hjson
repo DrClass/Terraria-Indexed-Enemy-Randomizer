@@ -1,6 +1,6 @@
 Configs: {
 	RandomizerConfig: {
-		DisplayName: Enemy Randomizer
+		DisplayName: Indexed Enemy Randomizer
 
 		IncludeOppositeEvil: {
 			Label: Include opposite-evil enemies in Hardmode

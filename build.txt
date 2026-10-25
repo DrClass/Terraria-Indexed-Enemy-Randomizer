@@ -1,4 +1,4 @@
-displayName = Enemy Randomizer
+displayName = Indexed Enemy Randomizer
 author = DrClass
 version = 1.0.0
 buildIgnore = .tools/*, .inspection/*, Tests/*, bin/*, obj/*, README.md, .gitignore

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace EnemyRandomizer;
+namespace IndexedEnemyRandomizer;
 
 // No Main.rand, System.Random, or string.GetHashCode: results must survive reloads
 // and be identical on different operating systems and .NET versions.

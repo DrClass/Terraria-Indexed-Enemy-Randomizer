@@ -4,7 +4,7 @@ using Terraria.DataStructures;
 using Terraria.ID;
 using Terraria.ModLoader;
 
-namespace EnemyRandomizer;
+namespace IndexedEnemyRandomizer;
 
 /// <summary>
 /// Delivers shield-credit projectiles directly to their pillar so kills anywhere in the world can count.
@@ -65,7 +65,7 @@ public sealed class PillarCreditNPC : GlobalNPC
     /// <summary>
     /// Marks mod-issued credit projectiles so the native-bolt suppression hook preserves them.
     /// </summary>
-    internal const string CreditContext = "EnemyRandomizer:PillarCredit";
+    internal const string CreditContext = "IndexedEnemyRandomizer:PillarCredit";
     /// <summary>
     /// Recognizes the four lunar tower controller NPCs.
     /// </summary>

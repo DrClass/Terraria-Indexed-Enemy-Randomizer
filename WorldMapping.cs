@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace EnemyRandomizer;
+namespace IndexedEnemyRandomizer;
 
 // Separate from world globals so progression, biome filtering, and coverage can
 // be verified without starting Terraria. World Hardmode state is not an input.

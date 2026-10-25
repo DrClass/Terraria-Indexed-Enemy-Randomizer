@@ -1,6 +1,6 @@
 using Terraria.ID;
 
-namespace EnemyRandomizer;
+namespace IndexedEnemyRandomizer;
 
 // Source requirements in vanilla 1.4.4. These remain restrictions even when
 // a forced spawn could produce that source early. No live defeat flags:

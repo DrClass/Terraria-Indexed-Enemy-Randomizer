@@ -8,7 +8,7 @@ using Microsoft.Xna.Framework;
 using Terraria;
 using Terraria.ModLoader;
 
-namespace EnemyRandomizer;
+namespace IndexedEnemyRandomizer;
 
 /// <summary>
 /// Formats a full mapping as readable text without depending on file-system or chat APIs.
@@ -27,7 +27,7 @@ internal static class MappingExport
     internal static string Render(WorldMapping map, IEnumerable<int> sources, Func<int, string> label, string metadata)
     {
         // Write the direction explicitly: these rows answer what a natural source becomes, unlike the inverse hint command.
-        var text = new StringBuilder("Enemy Randomizer mapping\n");
+        var text = new StringBuilder("Indexed Enemy Randomizer mapping\n");
         text.AppendLine(metadata);
         text.AppendLine("Direction: original spawn -> replacement. IDs are in brackets.");
         text.AppendLine("Variants: choose one listed member randomly. Twins and Scutlix encounters: spawn BOTH listed members.");
@@ -125,12 +125,12 @@ public sealed class DumpMappingCommand : ModCommand
         try
         {
             // Write under the host's save folder; timestamp plus GUID avoids collisions between repeated exports.
-            string directory = Path.Combine(Main.SavePath, "EnemyRandomizer", "MappingExports");
+            string directory = Path.Combine(Main.SavePath, "IndexedEnemyRandomizer", "MappingExports");
             Directory.CreateDirectory(directory);
             string path = Path.Combine(directory, $"mapping-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.txt");
             File.WriteAllText(path, report, new UTF8Encoding(false));
             // Only reveal the basename and relative save-folder location in chat, never a Windows user-profile path.
-            caller.Reply($"Mapping saved: {Path.GetFileName(path)} (world host save folder: EnemyRandomizer/MappingExports)", Color.LightGreen);
+            caller.Reply($"Mapping saved: {Path.GetFileName(path)} (world host save folder: IndexedEnemyRandomizer/MappingExports)", Color.LightGreen);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {

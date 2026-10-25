@@ -10,7 +10,7 @@ using Terraria.GameContent;
 using Terraria.Localization;
 using Terraria.ModLoader;
 
-namespace EnemyRandomizer;
+namespace IndexedEnemyRandomizer;
 
 /// <summary>
 /// Word-wraps this mod's configuration tooltips to fit the available UI width.
@@ -52,7 +52,7 @@ public sealed class ConfigTooltips : ModSystem
     {
         // The renderer is shared by every mod, so match our own localized tooltip text before changing it.
         bool ours = typeof(RandomizerConfig).GetProperties().Where(p => p.PropertyType == typeof(bool))
-            .Any(p => text == Language.GetTextValue("Mods.EnemyRandomizer.Configs.RandomizerConfig." + p.Name + ".Tooltip"));
+            .Any(p => text == Language.GetTextValue("Mods.IndexedEnemyRandomizer.Configs.RandomizerConfig." + p.Name + ".Tooltip"));
         if (!ours)
             return text;
         // Measure in UI-scaled coordinates, leaving a screen margin and capping overly wide tooltips.

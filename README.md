@@ -1,4 +1,4 @@
-# Enemy Randomizer
+# Indexed Enemy Randomizer
 
 A Terraria mod that replaces enemies, bosses, and critters using the world seed. If a Bunny becomes a Zombie in your world, it will keep doing so after you save and reload.
 
@@ -54,9 +54,9 @@ These commands are available to every player, without admin permissions.
 
 Names are case-insensitive. You can use full names, IDs, or an unambiguous partial name. `/hint twins` also works when the Twins are grouped.
 
-Exports go in `EnemyRandomizer/MappingExports/` under the host's tModLoader save folder. On a dedicated server, the file is on the server. Chat shows the filename, not the host's full personal folder path.
+Exports go in `IndexedEnemyRandomizer/MappingExports/` under the host's tModLoader save folder. On a dedicated server, the file is on the server. Chat shows the filename, not the host's full personal folder path.
 
-In the server console, omit the slash; direct spawns appear at world spawn. If another mod uses the same command name, add the mod prefix, for example `/EnemyRandomizer:hint Zombie`.
+In the server console, omit the slash; direct spawns appear at world spawn. If another mod uses the same command name, add the mod prefix, for example `/IndexedEnemyRandomizer:hint Zombie`.
 
 ## Settings
 
@@ -103,7 +103,7 @@ dotnet build /p:BuildMod=false
 Run the regression checks with:
 
 ```powershell
-dotnet run --project Tests/EnemyRandomizer.Tests.csproj
+dotnet run --project Tests/IndexedEnemyRandomizer.Tests.csproj
 ```
 
 The tests cover mapping stability, progression rules, commands, spawn handling, and compatibility of the patched game methods. They do not replace in-game or multiplayer playtesting.

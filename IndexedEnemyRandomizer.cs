@@ -1,12 +1,12 @@
 using Terraria.ModLoader;
 
-namespace EnemyRandomizer
+namespace IndexedEnemyRandomizer
 {
 	/// <summary>
 	/// Entry point loaded by tModLoader. Feature-specific systems contain the gameplay logic;
 	/// this class owns the shared AI hooks and dispatches the mod's network packets.
 	/// </summary>
-	public class EnemyRandomizer : Mod
+	public class IndexedEnemyRandomizer : Mod
 	{
 		/// <summary>
 		/// Installs the vanilla AI overrides when tModLoader loads the mod.

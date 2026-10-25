@@ -10,7 +10,7 @@ using Terraria;
 using Terraria.ID;
 using Terraria.ModLoader;
 
-namespace EnemyRandomizer;
+namespace IndexedEnemyRandomizer;
 
 /// <summary>
 /// Standalone regression harness using Terraria metadata and copied method bodies without launching a world.
@@ -184,8 +184,11 @@ internal static class Program
                 id => id.ToString(System.Globalization.CultureInfo.InvariantCulture), "compatibility"));
         }
 
-        // Normalize report line endings so this fixture also works outside Windows.
-        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(results.ToString().Replace("\r\n", "\n"));
+        // Preserve the original compatibility fixture across the mod's display-name
+        // change. Only normalize the report title; all mappings and other text must match.
+        string report = results.ToString().Replace("\r\n", "\n")
+            .Replace("Indexed Enemy Randomizer mapping\n", "Enemy Randomizer mapping\n");
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(report);
         string fingerprint = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
         const string expected = "49FE322297BB54C0556145A7A7D3D13E3200305E951B6FF0802F694D3A9BDB01";
         Assert(fingerprint == expected, "Readability changes altered existing mappings, group membership, hints, or exports");

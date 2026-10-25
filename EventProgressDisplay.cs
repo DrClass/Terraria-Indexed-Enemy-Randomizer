@@ -3,7 +3,7 @@ using Terraria;
 using Terraria.GameContent.Events;
 using Terraria.ModLoader;
 
-namespace EnemyRandomizer;
+namespace IndexedEnemyRandomizer;
 
 /// <summary>
 /// Keeps an active event's progress bar visible even when randomized NPCs do not match its native roster.

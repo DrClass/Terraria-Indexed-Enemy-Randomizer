@@ -14,7 +14,7 @@ using Terraria.ID;
 using Terraria.Localization;
 using Terraria.ModLoader;
 
-namespace EnemyRandomizer;
+namespace IndexedEnemyRandomizer;
 
 /// <summary>
 /// Shows concise replacement names for boss spawns and event waves, deferring announcements until a spawn succeeds.
@@ -197,7 +197,7 @@ public sealed class RandomizerSonar : ModPlayer
                 || !ContentSamples.NpcsByNetId.ContainsKey(source))
                 return;
             // Echo the sequence with a serialized NetworkText so the client can localize and reject stale results.
-            var response = ModContent.GetInstance<EnemyRandomizer>().GetPacket();
+            var response = ModContent.GetInstance<IndexedEnemyRandomizer>().GetPacket();
             response.Write((byte)1);
             response.Write(request);
             SpawnMessages.ShortName(SpawnMessages.PreviewTarget(source)).Serialize(response);
