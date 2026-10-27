@@ -39,7 +39,13 @@ internal static class Program
     /// </summary>
     private static void Main()
     {
+        TestCritterForms();
+        TestMiscFamilies();
+        TestStatueLootSettings();
+        // Verify the new army semantics before comparing the versioned fingerprint.
+        TestArmyProgression();
         TestMappingCompatibility();
+        TestArmoredSkeletonTierAndGrouping();
         TestHintNotesAndRandomCalls();
         // Run focused feature regressions before the broad seed and catalog sweeps below.
         TestTownAndEvilOptions();
@@ -144,7 +150,8 @@ internal static class Program
     /// <summary>
     /// Verifies that refactoring preserves the exact existing assignments across world and grouping options.
     /// </summary>
-    // Compare against a fingerprint recorded before the readability refactor.
+    // Compare against the versioned mapping fingerprint; intentional pool changes
+    // require a new baseline after the focused grouping tests have passed.
     // Invariant tests alone could miss a valid but different permutation that reshuffles existing worlds.
     private static void TestMappingCompatibility()
     {
@@ -190,8 +197,208 @@ internal static class Program
             .Replace("Indexed Enemy Randomizer mapping\n", "Enemy Randomizer mapping\n");
         byte[] bytes = System.Text.Encoding.UTF8.GetBytes(report);
         string fingerprint = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
-        const string expected = "49FE322297BB54C0556145A7A7D3D13E3200305E951B6FF0802F694D3A9BDB01";
-        Assert(fingerprint == expected, "Readability changes altered existing mappings, group membership, hints, or exports");
+        // Version 1.0.5 merges army tiers and updates export descriptions.
+        const string expected = "8218435D70C1BE15CD62A4217989D1FFE22177D975636E6E97C8E95755E86690";
+        Assert(fingerprint == expected, $"Mapping fingerprint changed: {fingerprint}");
+    }
+
+    private static void TestStatueLootSettings()
+    {
+        var config = new RandomizerConfig();
+        Assert(config.IncludeBosses && config.BlockEarlyHardmodeStatueLoot && config.ReduceStatueLoot,
+            "Version 1.0.3 options must default on");
+
+        // Test the real vanilla tables, every entry, and repeated toggle changes.
+        float[] defaults = (float[])NPCID.Sets.StatueSpawnedDropRarity.Clone();
+        bool[] blocks = (bool[])NPCID.Sets.NoEarlymodeLootWhenSpawnedFromStatue.Clone();
+        float[] rates = (float[])defaults.Clone();
+        bool[] early = (bool[])blocks.Clone();
+        foreach (bool block in new[] { true, false, true })
+        foreach (bool reduce in new[] { true, false, true })
+        {
+            StatueLoot.Apply(rates, early, defaults, blocks, block, reduce);
+            for (int id = 1; id < NPCID.Count; id++)
+            {
+                Assert(rates[id] == (reduce && defaults[id] == -1f ? 0.2f : defaults[id]),
+                    $"Statue rate changed incorrectly for {id}");
+                Assert(early[id] == (blocks[id] || (block && !NpcCatalog.IsPreHardmode(id))),
+                    $"Statue tier restriction changed incorrectly for {id}");
+            }
+            Assert(rates[NPCID.Mimic] == 0f && rates[NPCID.Harpy] == 0.05f,
+                "Explicit vanilla rates must survive the fallback");
+            Assert(!early[NPCID.Crimera] && !early[NPCID.EaterofSouls],
+                "Opposite evil must not turn an early species into a Hardmode loot restriction");
+        }
+        StatueLoot.Apply(rates, early, defaults, blocks, false, false);
+        Assert(rates.SequenceEqual(defaults) && early.SequenceEqual(blocks), "Statue defaults were not restored");
+
+        // Preserve both old preferences, including serializers that populate defaults.
+        foreach (bool exclude in new[] { false, true })
+        foreach (var handling in new[] { Newtonsoft.Json.DefaultValueHandling.Include,
+                     Newtonsoft.Json.DefaultValueHandling.Populate })
+        {
+            string json = "{\"ExcludeBosses\":" + (exclude ? "true" : "false") + "}";
+            var migrated = Newtonsoft.Json.JsonConvert.DeserializeObject<RandomizerConfig>(json,
+                new Newtonsoft.Json.JsonSerializerSettings { DefaultValueHandling = handling });
+            Assert(migrated.IncludeBosses == !exclude, "Old boss preference was not migrated");
+            string saved = Newtonsoft.Json.JsonConvert.SerializeObject(migrated);
+            Assert(!saved.Contains("ExcludeBosses"), "Legacy boss option leaked into new saves");
+            Assert(Newtonsoft.Json.JsonConvert.DeserializeObject<RandomizerConfig>(saved,
+                new Newtonsoft.Json.JsonSerializerSettings { DefaultValueHandling = handling }).IncludeBosses == !exclude,
+                "Boss inclusion preference failed to round-trip");
+        }
+    }
+
+    private static void TestMiscFamilies()
+    {
+        Assert(new RandomizerConfig().GroupMiscVariants, "Miscellaneous groups must default on");
+        int[][] families = [
+            [210, 211], [366, 367], [362, 363, 364, 365], [583, 584, 585],
+            [671, 672], [674, 675], [595, 596, 597, 598, 599, 600],
+            [299, 538], [148, 149], [74, 297, 298]
+        ];
+        int[] goldIds = [NPCID.GoldDragonfly, NPCID.SquirrelGold, NPCID.GoldBird];
+        int[] ids = families.SelectMany(group => group).Concat(goldIds)
+            .Concat(new[] { (int)NPCID.BlueSlime, NPCID.Wraith, NPCID.Turtle, NPCID.Raven }).ToArray();
+        var banners = ids.ToDictionary(id => id, Item.NPCtoBanner);
+        foreach (bool misc in new[] { false, true })
+        foreach (bool gold in new[] { false, true })
+        foreach (bool banner in new[] { false, true })
+        foreach (bool separate in new[] { false, true })
+        foreach (bool crimson in new[] { false, true })
+        foreach (string seed in new[] { "misc families", "1701534883" })
+        {
+            var map = new WorldMapping(seed, crimson, ids, banners: banner ? banners : null,
+                separateProgressionPools: separate, groupGoldCritters: gold, groupMiscVariants: misc);
+            foreach (int[] family in families)
+            foreach (int id in family)
+            {
+                int[] expected;
+                if (gold && GoldCritters.Family(id) != 0)
+                    expected = ids.Where(member => GoldCritters.Family(member) == GoldCritters.Family(id)).Order().ToArray();
+                else if (misc)
+                    expected = family;
+                else if (id >= 362 && id <= 365)
+                    expected = id <= 363 ? [362, 363] : [364, 365];
+                else if (banner && (id == 148 || id == 149))
+                    expected = [148, 149];
+                else
+                    expected = [id];
+                Assert(map.Members(id).SequenceEqual(expected), $"Incorrect misc membership for {id}");
+                Assert(map.TryFindSource(id, out int source) && map.Replacement(source, "source", true) == expected[0],
+                    "Misc group inverse hint failed");
+                Assert(map.Replacement(id, "id", true) == map.Replacement(expected[0], "representative", false),
+                    "Misc family replacements disagree");
+            }
+            foreach (int id in goldIds)
+                Assert(map.IsGoldCritterGroup(id) == gold, "Misc setting changed gold weighting");
+            Assert(map.Members(NPCID.Turtle).Count == 1 && map.Members(NPCID.Raven).Count == 1,
+                "Misc grouping absorbed unrelated species");
+            if (separate)
+                foreach (int source in map.EarlySources)
+                    Assert(map.Members(map.Replacement(source, "early", true)).All(NpcCatalog.IsPreHardmode),
+                        "Misc groups crossed progression pools");
+        }
+        // Full-catalog permutation coverage with the new option enabled. The
+        // existing fingerprint independently verifies old mappings when disabled.
+        int[] all = Enumerable.Range(1, NPCID.Count - 1)
+            .Where(id => NpcCatalog.CanReplace(new NPC { type = id, netID = id })).ToArray();
+        var full = new WorldMapping("misc full catalog", false, all,
+            banners: all.ToDictionary(id => id, Item.NPCtoBanner), groupGoldCritters: true,
+            groupArmyTiers: true, combineTwins: true, groupMiscVariants: true);
+        Assert(full.AllSources.Select(id => full.Replacement(id, "full", true)).Distinct().Count() == full.AllSources.Length,
+            "Misc grouping lost full-catalog target coverage");
+    }
+
+    private static void TestCritterForms()
+    {
+        int[][] pairs = [
+            [NPCID.Seagull, NPCID.Seagull2], [NPCID.Grebe, NPCID.Grebe2],
+            [NPCID.Duck, NPCID.Duck2], [NPCID.DuckWhite, NPCID.DuckWhite2],
+            [NPCID.Goldfish, NPCID.GoldfishWalker],
+            [NPCID.GoldGoldfish, NPCID.GoldGoldfishWalker]
+        ];
+        int[] ids = pairs.SelectMany(pair => pair).Append(NPCID.BlueSlime).ToArray();
+        var banners = ids.ToDictionary(id => id, Item.NPCtoBanner);
+        foreach (bool grouped in new[] { false, true })
+        foreach (bool gold in new[] { false, true })
+        foreach (bool separate in new[] { false, true })
+        foreach (bool crimson in new[] { false, true })
+        {
+            var map = new WorldMapping("critter forms", crimson, ids,
+                banners: grouped ? banners : null, groupGoldCritters: gold,
+                separateProgressionPools: separate);
+            foreach (int[] pair in pairs)
+            {
+                int[] expected = gold && GoldCritters.Family(pair[0]) == NPCID.Goldfish
+                    ? [NPCID.Goldfish, NPCID.GoldfishWalker, NPCID.GoldGoldfish, NPCID.GoldGoldfishWalker]
+                    : pair;
+                Assert(map.Members(pair[0]).SequenceEqual(expected), "Critter forms have incorrect membership");
+                Assert(map.Members(pair[1]).SequenceEqual(expected), "Alternate form has a separate group");
+                Assert(map.Replacement(pair[0], "first", false) == map.Replacement(pair[1], "second", false),
+                    "Movement forms map to different replacements");
+                Assert(map.TryFindSource(pair[0], out int first) && map.TryFindSource(pair[1], out int second)
+                    && first == second, "Movement forms have different inverse hints");
+            }
+            Assert(map.AllSources.Length == (gold ? 6 : 7), "Critter species merged or split unexpectedly");
+        }
+
+        // The equivalent hostile forms already share real banners. Keep that
+        // existing setting-controlled behavior and verify they were not missed.
+        foreach (var (first, second) in new[] { (164, 165), (163, 238), (239, 240),
+                     (236, 237), (530, 531), (158, 159), (195, 196), (198, 199), (348, 349) })
+        {
+            int[] enemies = [first, second, NPCID.BlueSlime, NPCID.Wraith];
+            var enemyBanners = enemies.ToDictionary(id => id, Item.NPCtoBanner);
+            Assert(enemyBanners[first] > 0 && enemyBanners[first] == enemyBanners[second],
+                $"Alternate hostile forms {first}/{second} need a grouping rule");
+            var map = new WorldMapping("hostile forms", false, enemies, banners: enemyBanners);
+            Assert(map.Members(first).Contains(second), $"Hostile forms {first}/{second} split despite their banner");
+        }
+    }
+
+    // HeavySkeleton's negative ID must share the tier and banner of Armored Skeleton,
+    // not the early Skeleton variants adjacent to it in NPCID's variant list.
+    private static void TestArmoredSkeletonTierAndGrouping()
+    {
+        Assert(NPCID.HeavySkeleton == -15, "Armored Skeleton variant ID changed");
+        Assert(NPCID.FromNetId(NPCID.HeavySkeleton) == NPCID.ArmoredSkeleton, "Heavy Skeleton base species changed");
+        Assert(!NpcCatalog.IsPreHardmode(NPCID.HeavySkeleton), "Heavy Skeleton leaked into pre-Hardmode");
+        Assert(!NpcCatalog.IsPreHardmode(NPCID.ArmoredSkeleton), "Armored Skeleton leaked into pre-Hardmode");
+        Assert(NpcCatalog.IsPreHardmode(NPCID.BigBoned) && NpcCatalog.IsPreHardmode(NPCID.ShortBones),
+            "Ordinary Skeleton variants incorrectly moved to Hardmode");
+
+        int[] ids = [NPCID.BlackSlime, NPCID.BlueSlime, NPCID.Zombie, NPCID.ArmoredSkeleton,
+            NPCID.HeavySkeleton, NPCID.Wraith, NPCID.Pixie];
+        var banners = ids.ToDictionary(id => id, id =>
+        {
+            var sample = new NPC { netID = id, type = NPCID.FromNetId(id) };
+            return Item.NPCtoBanner(sample.BannerID());
+        });
+        Assert(banners[NPCID.HeavySkeleton] > 0 && banners[NPCID.HeavySkeleton] == banners[NPCID.ArmoredSkeleton],
+            "Armored Skeleton forms do not resolve to the same real banner");
+
+        foreach (bool crimson in new[] { false, true })
+        foreach (bool grouped in new[] { false, true })
+        foreach (bool separate in new[] { false, true })
+        foreach (string seed in new[] { "1701534883", "armored regression" })
+        {
+            var map = new WorldMapping(seed, crimson, ids, banners: grouped ? banners : null,
+                separateProgressionPools: separate);
+            var expectedMembers = grouped ? new[] { (int)NPCID.ArmoredSkeleton, NPCID.HeavySkeleton }
+                : new[] { (int)NPCID.HeavySkeleton };
+            Assert(map.Members(NPCID.HeavySkeleton).SequenceEqual(expectedMembers), "Armored Skeleton banner grouping failed");
+            if (!separate)
+                continue;
+
+            foreach (int source in map.EarlySources)
+                Assert(map.Members(map.Replacement(source, source.ToString(), true)).All(id => NPCID.FromNetId(id) != NPCID.ArmoredSkeleton),
+                    "An early source can produce an Armored Skeleton");
+            Assert(map.TryFindSource(NPCID.HeavySkeleton, out int original) && !map.IsEarlySource(original),
+                "Armored Skeleton has an early inverse source");
+            Assert(map.Replacement(NPCID.HeavySkeleton, "-15", true) == map.Replacement(NPCID.HeavySkeleton, "-15", false),
+                "Forced early Heavy Skeleton spawn lost its fixed Hardmode mapping");
+        }
     }
 
     // Check user-visible hint wording and RNG consumption, which a valid mapping
@@ -205,8 +412,8 @@ internal static class Program
         var map = new WorldMapping("hint notes", false, ids, banners: banners,
             combineTwins: true, groupGoldCritters: true);
         Assert(HintCommand.GetVariantNote(map, NPCID.Zombie) == " (random variant)", "Zombie hint lost variant note");
-        Assert(HintCommand.GetVariantNote(map, NPCID.Bunny) == " (90% normal chance)", "Normal critter hint changed");
-        Assert(HintCommand.GetVariantNote(map, NPCID.GoldBunny) == " (10% gold chance)", "Gold critter hint changed");
+        Assert(HintCommand.GetVariantNote(map, NPCID.Bunny) == " (vanilla critter odds)", "Normal critter hint changed");
+        Assert(HintCommand.GetVariantNote(map, NPCID.GoldBunny) == " (vanilla gold chance)", "Gold critter hint changed");
         foreach (int id in new[] { NPCID.Wraith, NPCID.Retinazer, NPCID.ScutlixRider, NPCID.TruffleWorm })
             Assert(HintCommand.GetVariantNote(map, id) == "", "Encounter/singleton hint incorrectly calls it a random variant");
 
@@ -220,7 +427,7 @@ internal static class Program
             bounds.Add(maximum);
             return 1;
         });
-        Assert(chosen == NPCID.BunnyXmas && bounds.SequenceEqual(new[] { 10, 2 }),
+        Assert(chosen == NPCID.BunnyXmas && bounds.SequenceEqual(new[] { NPC.goldCritterChance, 2 }),
             "Normal variant selection changed RNG order or bounds");
         bounds.Clear();
         chosen = GoldCritters.Pick([NPCID.Bunny, NPCID.BunnyXmas, NPCID.GoldBunny], maximum =>
@@ -228,8 +435,17 @@ internal static class Program
             bounds.Add(maximum);
             return 0;
         });
-        Assert(chosen == NPCID.GoldBunny && bounds.SequenceEqual(new[] { 10 }),
+        Assert(chosen == NPCID.GoldBunny && bounds.SequenceEqual(new[] { NPC.goldCritterChance }),
             "Gold singleton consumed an extra random roll");
+
+        // A luck roll decides rarity; ordinary RNG is reserved for appearance.
+        chosen = GoldCritters.Pick([NPCID.Bunny, NPCID.GoldBunny],
+            _ => throw new Exception("Unexpected appearance roll"), maximum =>
+            {
+                Assert(maximum == NPC.goldCritterChance, "Gold roll did not use vanilla's current denominator");
+                return 0;
+            });
+        Assert(chosen == NPCID.GoldBunny, "Player luck roll was ignored");
     }
 
     /// <summary>
@@ -245,7 +461,7 @@ internal static class Program
             Assert(!NpcCatalog.CanReplace(npc), $"Protected encounter randomized: {id}");
             Assert(!NpcCatalog.KeepActiveAI(npc), $"Protected encounter AI modified: {id}");
         }
-        Assert(!new RandomizerConfig().ExcludeBosses, "Boss exclusion must default off");
+        Assert(new RandomizerConfig().IncludeBosses, "Boss inclusion must default on");
         var cultist = new NPC { type = NPCID.CultistBoss, netID = NPCID.CultistBoss, boss = true };
         Assert(NpcCatalog.CanReplace(cultist), "Lunatic Cultist excluded from default pool");
         Assert(!NpcCatalog.CanReplace(cultist, true), "Boss exclusion missed Lunatic Cultist");
@@ -786,6 +1002,65 @@ internal static class Program
     /// <summary>
     /// Covers every cavern variant, army tier-grouping option combination, and Jungle Mimic special-seed handling.
     /// </summary>
+    private static void TestArmyProgression()
+    {
+        int[][] families = [ [552, 553, 554], [555, 556, 557], [558, 559, 560], [561, 562, 563],
+            [564, 565], [568, 569], [570, 571], [572, 573], [574, 575], [576, 577] ];
+        int[][] tiers = [ [552, 553, 554], [555, 556, 557], [558, 559, 560], [561, 562, 563],
+            [564, 564, 565], [568, 568, 569], [570, 570, 571], [572, 572, 573], [574, 574, 575], [576, 576, 577] ];
+        Assert(ArmyFamilies.ProgressionTier(false, false, false) == 1, "Early army tier");
+        Assert(ArmyFamilies.ProgressionTier(true, false, false) == 1, "Hardmode alone must not enable tier 2");
+        Assert(ArmyFamilies.ProgressionTier(true, true, false) == 2, "Mech army tier");
+        Assert(ArmyFamilies.ProgressionTier(true, true, true) == 3, "Golem army tier");
+        int[] ids = families.SelectMany(f => f).Concat(new[] { (int)NPCID.BlueSlime, NPCID.Zombie,
+            NPCID.SkeletronPrime, NPCID.Golem, NPCID.Wraith }).ToArray();
+        foreach (bool separate in new[] { false, true })
+        foreach (bool crimson in new[] { false, true })
+        {
+            var map = new WorldMapping("army persistence", crimson, ids, groupArmyTiers: true,
+                separateProgressionPools: separate);
+            for (int family = 0; family < families.Length; family++)
+            foreach (int member in families[family])
+            {
+                int first = families[family][0];
+                Assert(map.Members(member).SequenceEqual(families[family]), "Army family split between progression pools");
+                Assert(map.IsEarlySource(member) == NpcCatalog.IsPreHardmode(first), "Army family uses a later-tier pool");
+                Assert(map.Replacement(member, "member", false) == map.Replacement(first, "first", true),
+                    "Upgraded army spawn loses the original replacement");
+                Assert(map.TryFindSource(member, out int source) && map.TryFindSource(first, out int firstSource)
+                    && source == firstSource, "Army tier hint loses its original source");
+                for (int tier = 1; tier <= 3; tier++)
+                    Assert(ArmyFamilies.ForTier(member, tier) == tiers[family][tier - 1], "Wrong progression-selected army form");
+                int target = map.Replacement(member, "member", false);
+                Assert(map.Members(target).All(t => ProgressionRules.Allows(first, t)), "Army mapping introduced a progression cycle");
+            }
+            Assert(map.TryFindSource(NPCID.DD2GoblinT3, out int goblinSource)
+                && (!separate || map.IsEarlySource(goblinSource)), "Tier-1 army family moved into the Hardmode pool");
+            Assert(HintCommand.GetVariantNote(map, NPCID.DD2OgreT3) == " (tier follows progression)", "Army hint suggests a random tier");
+            Assert(MappingExport.Render(map, ids, id => id.ToString(), "test").Contains("Progression-selected army tier:"),
+                "Export hides army tier selection");
+        }
+        // Check the selected IDs against vanilla wave accounting. Replace the
+        // difficulty getter in a copied method so this test needs no game window.
+        for (int tier = 1; tier <= 3; tier++)
+        {
+            MethodInfo points = typeof(Terraria.GameContent.Events.DD2Event).GetMethod(
+                $"Difficulty_{tier}_GetMonsterPointsWorth", BindingFlags.NonPublic | BindingFlags.Static)!;
+            int source = ArmyFamilies.ForTier(NPCID.DD2GoblinT1, tier);
+            using var copy = new DynamicMethodDefinition(points);
+            foreach (var instruction in copy.Definition.Body.Instructions)
+            {
+                if (instruction.Operand is Mono.Cecil.MethodReference method && method.Name == "get_expertMode")
+                {
+                    instruction.OpCode = Mono.Cecil.Cil.OpCodes.Ldc_I4_0;
+                    instruction.Operand = null;
+                }
+            }
+            var getPoints = (Func<int, int>)copy.Generate().CreateDelegate(typeof(Func<int, int>));
+            Assert(getPoints(source) > 0, "Mapped army source earns no wave credit");
+        }
+    }
+
     private static void TestArmyAndCavernFamilies()
     {
         Assert(new RandomizerConfig().GroupOldOnesArmyTiers, "Army grouping default");
@@ -818,11 +1093,10 @@ internal static class Program
                 separateProgressionPools: separate, groupArmyTiers: enabled);
             foreach (int id in ids.Where(id => ArmyFamilies.Family(id) != 0))
             {
-                var expected = enabled ? ids.Where(other => ArmyFamilies.Family(other) == ArmyFamilies.Family(id)
-                    && (!separate || map.IsEarlySource(id) == map.IsEarlySource(other))) : new[] { id };
+                var expected = enabled ? ids.Where(other => ArmyFamilies.Family(other) == ArmyFamilies.Family(id)) : new[] { id };
                 Assert(map.Members(id).ToHashSet().SetEquals(expected), "Army tier grouping wrong");
                 int target = map.Replacement(id, id.ToString(), map.IsEarlySource(id));
-                Assert(map.Members(target).All(t => ProgressionRules.Allows(id, t)), "Army grouping allows softlock");
+                Assert(map.Members(target).All(t => ProgressionRules.Allows(map.ProgressionSource(id), t)), "Army grouping allows softlock");
             }
             Assert(!map.TryFindSource(NPCID.DD2SkeletonT1, out _), "Skeleton helper restored");
         }
@@ -865,15 +1139,15 @@ internal static class Program
                 Assert(map.TryFindSource(normal, out int source), "Critter family has no inverse source");
                 foreach (int member in family)
                     Assert(map.TryFindSource(member, out int other) && source == other, "Gold source hint differs");
-                // Enumerate all ten rarity rolls explicitly; exactly one must select the gold subset.
+                // Enumerate the vanilla rarity roll; exactly one selects gold before luck adjustments.
                 int goldCount = 0;
-                for (int roll = 0; roll < 10; roll++)
+                for (int roll = 0; roll < NPC.goldCritterChance; roll++)
                 {
-                    int chosen = GoldCritters.Pick(map.Members(normal), max => max == 10 ? roll : 0);
+                    int chosen = GoldCritters.Pick(map.Members(normal), max => max == NPC.goldCritterChance ? roll : 0);
                     if (GoldCritters.IsGold(chosen)) goldCount++;
                     Assert(family.Contains(chosen), "Wrong species in critter selection");
                 }
-                Assert(goldCount == 1, "Gold probability is not exactly one in ten");
+                Assert(goldCount == 1, "Gold probability differs from vanilla");
             }
             var ungrouped = new WorldMapping("gold", false, ids,
                 banners ? ids.ToDictionary(id => id, Item.NPCtoBanner) : null,
@@ -983,7 +1257,8 @@ internal static class Program
         // Ground/wall spiders, sand spiders, Truffle Worm, and other vanilla
         // transformations must not become new mapping events.
         foreach (var (first, second) in new[] { (239, 240), (164, 165), (163, 238),
-                     (236, 237), (530, 531), (374, 375), (195, 196), (390, 382), (406, 405), (428, 427) })
+                     (236, 237), (530, 531), (374, 375), (195, 196), (390, 382), (406, 405), (428, 427),
+                     (602, 603), (608, 609), (362, 363), (364, 365), (55, 230), (592, 593) })
         {
             var npc = new NPC { type = first, netID = first };
             for (int repeat = 0; repeat < 4; repeat++)

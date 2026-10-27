@@ -58,7 +58,9 @@ internal static class MappingExport
                 else if (map.IsTruffleWormGroup(target))
                     result = label(Terraria.ID.NPCID.TruffleWorm) + " (normal form; fleeing form shares mapping)";
                 else if (map.IsGoldCritterGroup(target))
-                    result = "90% normal / 10% gold: " + result;
+                    result = "Vanilla gold-critter odds (player luck applies): " + result;
+                else if (map.IsArmyGroup(target))
+                    result = "Progression-selected army tier: " + result;
                 else if (map.Members(target).Count > 1)
                     result = "Random variant: " + result;
                 // Annotate source-side special cases separately from the target-side spawn instructions.
@@ -112,10 +114,13 @@ public sealed class DumpMappingCommand : ModCommand
             + $"Mod version: {Mod.Version}\nWorld evil: {(WorldGen.crimson ? "Crimson" : "Corruption")}\n"
             + $"Celebration flag: {Main.tenthAnniversaryWorld}\nGroup variants: {config.GroupNpcVariants}\n"
             + $"Combine Twins: {config.CombineTwins}\nLegacy event credit: {config.LegacyEventCredit}\n"
-            + $"Exclude bosses: {config.ExcludeBosses}\n"
+            + $"Include bosses: {config.IncludeBosses}\n"
+            + $"Block early Hardmode statue loot: {config.BlockEarlyHardmodeStatueLoot}\n"
+            + $"Reduce statue loot: {config.ReduceStatueLoot}\n"
             + $"Preserve NPC children: {config.PreserveNpcChildren}\nLimit minibosses: {config.LimitMiniBosses}\n"
             + $"Limit bosses: {config.LimitBosses}\nGroup gold critters: {config.GroupGoldCritters}\n"
             + $"Group Old One's Army tiers: {config.GroupOldOnesArmyTiers}\n"
+            + $"Group miscellaneous variants: {config.GroupMiscVariants}\n"
             + $"Include opposite evil: {config.IncludeOppositeEvil}\nRandomize town NPCs: {config.RandomizeTownNpcs}\n"
             + $"Randomize town shimmer: {config.RandomizeTownShimmer}\n"
             + $"Separate progression pools: {config.SeparateProgressionPools}\n"

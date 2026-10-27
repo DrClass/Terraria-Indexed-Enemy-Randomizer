@@ -27,6 +27,7 @@
     <Compile Include="../SpawnMessages.cs" Link="SpawnMessages.cs" />
     <Compile Include="../IndexedEnemyRandomizer.cs" Link="IndexedEnemyRandomizer.cs" />
     <Compile Include="../SolutionShimmer.cs" Link="SolutionShimmer.cs" />
+    <Compile Include="../StatueLoot.cs" Link="StatueLoot.cs" />
     <Compile Include="../GoldCritters.cs" Link="GoldCritters.cs" />
     <Compile Include="../EnemyFamilies.cs" Link="EnemyFamilies.cs" />
     <Compile Include="../ConfigTooltips.cs" Link="ConfigTooltips.cs" />

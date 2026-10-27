@@ -30,6 +30,7 @@ public sealed class RandomizerSystem : ModSystem
     private static bool mappingExcludeBosses;
     private static bool mappingSeparatePools;
     private static bool mappingGoldCritters;
+    private static bool mappingMiscVariants;
     private static bool mappingArmyTiers;
     private static bool mappingOppositeEvil;
     private static bool mappingTownNpcs;
@@ -40,7 +41,7 @@ public sealed class RandomizerSystem : ModSystem
     /// <summary>
     /// Reads the boss exclusion option, safely defaulting to false during early initialization.
     /// </summary>
-    internal static bool BossesExcluded => ModContent.GetInstance<RandomizerConfig>()?.ExcludeBosses ?? false;
+    internal static bool BossesExcluded => !(ModContent.GetInstance<RandomizerConfig>()?.IncludeBosses ?? true);
     /// <summary>
     /// Applies the catalog's eligibility rules with the current boss and town configuration.
     /// </summary>
@@ -107,12 +108,14 @@ public sealed class RandomizerSystem : ModSystem
         bool twins = config.CombineTwins;
         bool separatePools = config.SeparateProgressionPools;
         bool goldCritters = config.GroupGoldCritters;
+        bool miscVariants = config.GroupMiscVariants;
         bool armyTiers = config.GroupOldOnesArmyTiers;
         bool oppositeEvil = config.IncludeOppositeEvil;
         if (mapping == null || mappingSeed != seed || mappingCrimson != WorldGen.crimson || mappingGrouped != grouped
             || mappingCelebration != Main.tenthAnniversaryWorld || mappingTwins != twins || mappingExcludeBosses != BossesExcluded
             || mappingSeparatePools != separatePools || mappingGoldCritters != goldCritters || mappingArmyTiers != armyTiers
-            || mappingOppositeEvil != oppositeEvil || mappingTownNpcs != TownNpcsIncluded)
+            || mappingOppositeEvil != oppositeEvil || mappingTownNpcs != TownNpcsIncluded
+            || mappingMiscVariants != miscVariants)
         {
             // Record the complete cache key alongside the new mapping so all later lookups share the same instance.
             mappingSeed = seed;
@@ -123,6 +126,7 @@ public sealed class RandomizerSystem : ModSystem
             mappingExcludeBosses = BossesExcluded;
             mappingSeparatePools = separatePools;
             mappingGoldCritters = goldCritters;
+            mappingMiscVariants = miscVariants;
             mappingArmyTiers = armyTiers;
             mappingOppositeEvil = oppositeEvil;
             mappingTownNpcs = TownNpcsIncluded;
@@ -134,7 +138,8 @@ public sealed class RandomizerSystem : ModSystem
                 separateProgressionPools: separatePools,
                 groupGoldCritters: goldCritters,
                 groupArmyTiers: armyTiers,
-                includeOppositeEvil: oppositeEvil);
+                includeOppositeEvil: oppositeEvil,
+                groupMiscVariants: miscVariants);
         }
         return mapping;
     }
@@ -159,10 +164,19 @@ public sealed class RandomizerSystem : ModSystem
             return NPCID.ScutlixRider;
         if (current.IsTruffleWormGroup(target))
             return NPCID.TruffleWorm;
+        if (current.IsArmyGroup(target))
+            return ArmyFamilies.ForTier(target, ArmyFamilies.CurrentTier);
         // Only the member roll varies from spawn to spawn. The selected family itself remains fixed by the seed.
         IReadOnlyList<int> variants = current.Members(target);
         if (current.IsGoldCritterGroup(target))
+        {
+            // Vanilla natural spawns roll the nearby player's luck. For replacements
+            // use the closest living player, with an ordinary roll when none exists.
+            int player = Player.FindClosest(npc.position, npc.width, npc.height);
+            if (player >= 0 && player < Main.maxPlayers && Main.player[player].active && !Main.player[player].dead)
+                return GoldCritters.Pick(variants, Main.rand.Next, Main.player[player].RollLuck);
             return GoldCritters.Pick(variants, Main.rand.Next);
+        }
         return variants.Count == 1 ? variants[0] : variants[Main.rand.Next(variants.Count)];
     }
 

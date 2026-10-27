@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Newtonsoft.Json;
 using Terraria.ModLoader.Config;
 
 namespace IndexedEnemyRandomizer;
@@ -33,7 +34,7 @@ public sealed class RandomizerConfig : ModConfig
     public bool RandomizeTownNpcs { get; set; }
 
     /// <summary>
-    /// Groups compatible tiers of each Old One's Army species, subject to progression-pool separation.
+    /// Gives each army species one mapping and chooses its tier from world progression.
     /// </summary>
     [DefaultValue(true)]
     public bool GroupOldOnesArmyTiers { get; set; } = true;
@@ -45,10 +46,16 @@ public sealed class RandomizerConfig : ModConfig
     public bool LimitBosses { get; set; } = true;
 
     /// <summary>
-    /// Groups supported normal/gold critters and gives the gold subset a ten-percent chance per spawn.
+    /// Groups supported normal/gold critters and uses vanilla gold rarity and player luck.
     /// </summary>
     [DefaultValue(true)]
     public bool GroupGoldCritters { get; set; } = true;
+
+    /// <summary>
+    /// Groups selected miscellaneous size/color variants independently of banners.
+    /// </summary>
+    [DefaultValue(true)]
+    public bool GroupMiscVariants { get; set; } = true;
 
     /// <summary>
     /// Allows Red and Purple Solution to shimmer into each other without the usual late-game requirement.
@@ -59,7 +66,23 @@ public sealed class RandomizerConfig : ModConfig
     /// <summary>
     /// Refreshes the shared shimmer conversion table immediately after configuration changes.
     /// </summary>
-    public override void OnChanged() => SolutionShimmer.Refresh();
+    public override void OnChanged()
+    {
+        SolutionShimmer.Refresh();
+        StatueLoot.Refresh();
+    }
+
+    /// <summary>
+    /// Blocks statue loot from Hardmode species until the world enters Hardmode.
+    /// </summary>
+    [DefaultValue(true)]
+    public bool BlockEarlyHardmodeStatueLoot { get; set; } = true;
+
+    /// <summary>
+    /// Gives statue enemies without an existing rate rule a twenty-percent loot multiplier.
+    /// </summary>
+    [DefaultValue(true)]
+    public bool ReduceStatueLoot { get; set; } = true;
 
     /// <summary>
     /// Keeps NPC-created children, including children reached through projectile chains, in their original forms.
@@ -92,10 +115,27 @@ public sealed class RandomizerConfig : ModConfig
     public bool CombineTwins { get; set; } = true;
 
     /// <summary>
-    /// Removes boss roots from randomization, preserving their normal source behavior.
+    /// Includes eligible boss roots in the source and replacement pools.
     /// </summary>
-    [DefaultValue(false)]
-    public bool ExcludeBosses { get; set; }
+    [DefaultValue(true)]
+    public bool IncludeBosses { get; set; } = true;
+
+    // Read old saved configurations without exposing or saving a second toggle.
+    // Invert the old value so upgrading preserves the user's existing preference.
+    [JsonProperty("ExcludeBosses", DefaultValueHandling = DefaultValueHandling.Include)]
+    private bool LegacyExcludeBosses { set => legacyExcludeBosses = value; }
+
+    private bool? legacyExcludeBosses;
+
+    [System.Runtime.Serialization.OnDeserialized]
+    private void ReadLegacyBossOption(System.Runtime.Serialization.StreamingContext context)
+    {
+        // Apply after JSON default population so an absent new field cannot
+        // overwrite the migrated preference. New saves only contain IncludeBosses.
+        if (legacyExcludeBosses.HasValue)
+            IncludeBosses = !legacyExcludeBosses.Value;
+        legacyExcludeBosses = null;
+    }
 
     /// <summary>
     /// Uses actual NPC types for event credit instead of the source types that map to them.

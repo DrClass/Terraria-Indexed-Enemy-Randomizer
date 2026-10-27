@@ -56,6 +56,9 @@ internal sealed class WorldMapping
     /// </summary>
     public bool GroupGoldCritters { get; }
 
+    /// <summary>Whether army species share one mapping across all their tiers.</summary>
+    public bool GroupArmyTiers { get; }
+
     /// <summary>
     /// Filters eligible IDs, forms variant/encounter groups, then builds the forward and inverse maps.
     /// Special groups take precedence over banners; progression checks apply to every member pair.
@@ -68,25 +71,27 @@ internal sealed class WorldMapping
     /// <param name="combineTwins">Whether Retinazer and Spazmatism occupy one paired entry.</param>
     /// <param name="separateProgressionPools">Whether early and late classifications form separate permutations.</param>
     /// <param name="groupGoldCritters">Whether supported normal/gold critters share entries.</param>
-    /// <param name="groupArmyTiers">Whether compatible tiers of each army species share entries.</param>
+    /// <param name="groupArmyTiers">Whether all tiers of each army species share one earliest-tier entry.</param>
     /// <param name="includeOppositeEvil">Whether the other evil is admitted to the late tier, or the combined pool.</param>
+    /// <param name="groupMiscVariants">Whether miscellaneous size/color families share entries.</param>
     public WorldMapping(string seed, bool crimson, IEnumerable<int> eligible,
         IReadOnlyDictionary<int, int> banners = null, bool celebration = false, bool combineTwins = false,
         bool separateProgressionPools = true, bool groupGoldCritters = false, bool groupArmyTiers = false,
-        bool includeOppositeEvil = true)
+        bool includeOppositeEvil = true, bool groupMiscVariants = false)
     {
         // Keep only construction inputs; current world time, Hardmode, and defeat flags never enter this object.
         this.seed = seed;
         this.crimson = crimson;
         SeparateProgressionPools = separateProgressionPools;
         GroupGoldCritters = groupGoldCritters;
+        GroupArmyTiers = groupArmyTiers;
         // Filter before grouping so an excluded helper cannot sneak into a valid species through a shared banner.
         int[] candidates = eligible.Where(id => !NpcCatalog.IsExclusiveHelper(id) && SpecialSeedRules.Allowed(id, celebration)
                 && (includeOppositeEvil || NpcCatalog.AllowedInWorld(id, crimson)))
             .Distinct().OrderBy(id => id).ToArray();
         // The group key combines tier, family/banner, and an optional singleton ID.
         // Negative banner keys are reserved namespaces for special families, avoiding real banner collisions.
-        var groups = candidates.GroupBy(id => GetGroupKey(id, banners, combineTwins, groupArmyTiers));
+        var groups = candidates.GroupBy(id => GetGroupKey(id, banners, combineTwins, groupArmyTiers, groupMiscVariants));
         foreach (var group in groups)
         {
             // Prefer positive base IDs over negative size/costume IDs for stable keys and concise display names.
@@ -117,7 +122,7 @@ internal sealed class WorldMapping
     // Rules are checked in priority order. Army tiers have an explicit ungrouped
     // rule, so disabling that option cannot accidentally group them by banner.
     private (bool Early, int Banner, int Single) GetGroupKey(int id,
-        IReadOnlyDictionary<int, int> banners, bool combineTwins, bool groupArmyTiers)
+        IReadOnlyDictionary<int, int> banners, bool combineTwins, bool groupArmyTiers, bool groupMiscVariants)
     {
         bool early = SeparateProgressionPools && IsEarlySource(id);
 
@@ -142,6 +147,18 @@ internal sealed class WorldMapping
         if (GroupGoldCritters && goldFamily != 0)
             return (early, -1000 - goldFamily, 0);
 
+        // Gold rules take priority. Miscellaneous groups precede movement pairs
+        // so the two duck colors can share one entry when this option is on.
+        int miscFamily = MiscFamilies.Family(id);
+        if (groupMiscVariants && miscFamily != 0)
+            return (early, -4000 - miscFamily, 0);
+
+        // Movement forms describe the same critter, with or without a banner.
+        // Gold grouping runs first so its rarity roll retains both fish colors.
+        int critterFamily = CritterForms.Family(id);
+        if (critterFamily != 0)
+            return (early, -3000 - critterFamily, 0);
+
         bool canUseBanner = !NpcCatalog.IsLifecycleException(id) && banners != null;
         if (canUseBanner && banners.TryGetValue(id, out int banner) && banner > 0)
             return (early, banner, 0);
@@ -164,7 +181,17 @@ internal sealed class WorldMapping
     /// <summary>
     /// Classifies an ID by species and native world evil, independently of the world's current Hardmode flag.
     /// </summary>
-    public bool IsEarlySource(int id) => NpcCatalog.IsPreHardmode(id) && NpcCatalog.AllowedInWorld(id, crimson);
+    public bool IsEarlySource(int id)
+    {
+        // A family's earliest tier owns its permanent pool. Later forms must
+        // resolve to that same entry instead of disappearing when the event upgrades.
+        int source = ProgressionSource(id);
+        return NpcCatalog.IsPreHardmode(source) && NpcCatalog.AllowedInWorld(source, crimson);
+    }
+
+    internal int ProgressionSource(int id) => IsArmyGroup(id) ? ArmyFamilies.Family(id) : id;
+
+    public bool IsArmyGroup(int id) => GroupArmyTiers && ArmyFamilies.Family(id) != 0;
 
     /// <summary>
     /// Normalizes a known variant to its group key; unknown IDs retain their own identity.
@@ -194,7 +221,7 @@ internal sealed class WorldMapping
     /// </summary>
     public bool IsTruffleWormGroup(int id) => NpcCatalog.IsTruffleWorm(id);
     /// <summary>
-    /// Identifies families that should choose gold versus normal appearance with a 10/90 split.
+    /// Identifies families that choose gold versus normal appearance using vanilla rarity.
     /// </summary>
     public bool IsGoldCritterGroup(int id) => GroupGoldCritters && GoldCritters.Family(id) != 0;
 
@@ -208,7 +235,9 @@ internal sealed class WorldMapping
         {
             foreach (int targetMember in Members(target))
             {
-                if (!ProgressionRules.Allows(sourceMember, targetMember))
+                // All army tiers represent the earliest accessible source.
+                // Later forms must not falsely lock that source behind Golem.
+                if (!ProgressionRules.Allows(ProgressionSource(sourceMember), targetMember))
                     return false;
             }
         }

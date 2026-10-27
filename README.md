@@ -21,8 +21,9 @@ Enemies that share a banner can share one mapping. Each spawn then picks a rando
 - **The Twins:** spawn together by default. This can be disabled.
 - **Scutlix:** the rider and mount always spawn together.
 - **Truffle Worm:** its normal and fleeing forms share a mapping.
-- **Gold critters:** grouped families have a 10% gold chance per spawn.
-- **Old One's Army:** tiers of the same enemy can group together, while still respecting separate progression pools.
+- **Critter movement forms:** Seagulls, Grebes, brown Ducks, white Ducks, Goldfish, and Gold Goldfish each keep their two forms together, even with banner grouping off.
+- **Gold critters:** grouped families use vanilla gold odds, normally 1 in 400, with the nearest living player's luck.
+- **Old One's Army:** each grouped species keeps one mapping across every tier. Its earliest tier determines its pool. Replacements upgrade after a mechanical boss and after Golem; families without a lower tier use their earliest form. Progression never reshuffles the mapping.
 
 Wall of Flesh, Dungeon Guardian, pillars, and the regular cultists that summon Lunatic Cultist stay unchanged. **Lunatic Cultist himself is randomized.** Town NPCs are protected by default; pets, rescue forms, and special NPCs such as the Old Man remain protected even if town randomization is enabled.
 
@@ -68,9 +69,12 @@ The host's settings apply to everyone. Changing which NPCs are included or group
 | Include opposite-evil enemies in Hardmode | On |
 | Group NPC variants by banner | On |
 | Group critters with their gold variants | On |
+| Miscellaneous groupings | On |
 | Group Old One's Army enemy tiers | On |
 | Treat the Twins as one encounter | On |
-| Exclude bosses from randomization | Off |
+| Include bosses in randomization | On |
+| Block Hardmode statue loot before Hardmode | On |
+| Reduce statue loot without a vanilla rate rule | On |
 | Include town NPCs in randomization | Off |
 | Keep NPC-spawned creatures unchanged | On |
 | Limit each boss to one active encounter | On |
@@ -81,6 +85,10 @@ The host's settings apply to everyone. Changing which NPCs are included or group
 | Legacy pillar kill credit | Off |
 
 The miniboss limit works independently of the boss limit. The two legacy credit settings use actual event enemies instead of their mapped replacements. Combat, appearance, shimmer, and credit switches do not reshuffle enemies.
+
+Statue loot uses the actual spawned species. By default, Hardmode species give no statue loot before Hardmode. Species without an existing statue rate get a 20% multiplier; existing vanilla rates stay unchanged. This uses vanilla's player-damage requirement as well. Turning these options off restores the original rules. Older saved boss-exclusion preferences are preserved when upgrading to the inclusion setting.
+
+Miscellaneous groupings combine Bees, Scorpions, Ducks, Fairies, Macaws, Cockatiels, ordinary Dragonflies, Squirrels, Penguins, and Birds into their respective families. Each spawn chooses a random member. Gold grouping keeps vanilla gold odds. Turning miscellaneous grouping off leaves the other grouping settings and movement-form pairs intact.
 
 ## Mod compatibility
 

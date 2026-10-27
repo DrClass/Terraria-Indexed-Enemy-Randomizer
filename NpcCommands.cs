@@ -236,9 +236,12 @@ public sealed class HintCommand : ModCommand
         if (map.IsGoldCritterGroup(id))
         {
             if (GoldCritters.IsGold(id))
-                return " (10% gold chance)";
-            return " (90% normal chance)";
+                return " (vanilla gold chance)";
+            return " (vanilla critter odds)";
         }
+
+        if (map.IsArmyGroup(id))
+            return " (tier follows progression)";
 
         if (map.Members(id).Count <= 1)
             return "";

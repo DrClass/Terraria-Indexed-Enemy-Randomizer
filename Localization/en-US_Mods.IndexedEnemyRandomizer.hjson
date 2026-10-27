@@ -19,7 +19,7 @@ Configs: {
 
 		GroupOldOnesArmyTiers: {
 			Label: Group Old One's Army enemy tiers
-			Tooltip: Group tiers of the same Old One's Army enemy and choose a tier randomly per replacement. Respects separate pre-Hardmode and Hardmode pools. Independent of banner grouping. Off keeps tiers separate. On by default. Changes mappings.
+			Tooltip: Give each Old One's Army species one mapping across all tiers. Its earliest tier determines its pool. Spawn tier 2 after a mechanical boss and tier 3 after Golem, using the earliest available form when needed. Off keeps tiers separate. On by default. Changes mappings when toggled; progression only changes the spawned tier.
 		}
 
 		LimitBosses: {
@@ -29,7 +29,12 @@ Configs: {
 
 		GroupGoldCritters: {
 			Label: Group critters with their gold variants
-			Tooltip: Share one mapping for each critter family and its gold variants. Each replacement has a 10% gold chance and a 90% normal chance. Independent of banner grouping. On by default. Changing this rebuilds mappings.
+			Tooltip: Share one mapping for each critter family and its gold variants. Use vanilla gold-critter odds, normally 1 in 400, adjusted by the nearest living player's luck. Independent of banner grouping. On by default. Changing this rebuilds mappings.
+		}
+
+		GroupMiscVariants: {
+			Label: Miscellaneous groupings
+			Tooltip: Group Bees, Scorpions, Ducks, Fairies, Macaws, Cockatiels, ordinary Dragonflies, Squirrels, Penguins, and Birds into their respective families. Choose a random member per spawn. Gold-critter odds retain priority. Off leaves existing banner, gold, and movement-form groups intact. On by default. Changes mappings.
 		}
 
 		EarlyEvilSolutionShimmer: {
@@ -52,9 +57,19 @@ Configs: {
 			Tooltip: On: keep separate progression pools. Off: shuffle all eligible NPCs together, allowing Hardmode and both world evils from the start. Boss restrictions and protected NPC exclusions still apply. Changing this rebuilds mappings for future spawns.
 		}
 
-		ExcludeBosses: {
-			Label: Exclude bosses from randomization
-			Tooltip: Keep bosses as their original spawns and remove them from replacement targets, including event bosses. Off by default. Changes mappings; does not remove existing bosses or disable their normal summons.
+		IncludeBosses: {
+			Label: Include bosses in randomization
+			Tooltip: Include eligible bosses and event bosses in randomization. Off keeps their original spawns and removes them from replacement targets. On by default. Changing this changes mappings; existing bosses and normal summons remain available.
+		}
+
+		BlockEarlyHardmodeStatueLoot: {
+			Label: Block Hardmode statue loot before Hardmode
+			Tooltip: Hardmode species spawned from statues drop nothing in pre-Hardmode worlds. Uses the actual enemy species, not its mapped source or world evil. Off restores vanilla restrictions. On by default. Does not change mappings.
+		}
+
+		ReduceStatueLoot: {
+			Label: Reduce statue loot without a vanilla rate rule
+			Tooltip: Statue enemies without an existing rate rule drop items at 20% of their normal chance. Existing rates remain unchanged. Uses vanilla statue rules, including requiring player or minion damage. Off restores original rates. On by default. Does not change mappings.
 		}
 
 		CombineTwins: {

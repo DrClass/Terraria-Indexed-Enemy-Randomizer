@@ -9,10 +9,79 @@ using Terraria.ModLoader;
 namespace IndexedEnemyRandomizer;
 
 /// <summary>
+/// Explicit size/color families, independent of translated names and banners.
+/// </summary>
+internal static class MiscFamilies
+{
+    // Gold forms are absent: GoldCritters runs first and uses vanilla rarity.
+    internal static int Family(int id) => id switch
+    {
+        NPCID.Bee or NPCID.BeeSmall => NPCID.Bee,
+        NPCID.Scorpion or NPCID.ScorpionBlack => NPCID.ScorpionBlack,
+        NPCID.Duck or NPCID.Duck2 or NPCID.DuckWhite or NPCID.DuckWhite2 => NPCID.Duck,
+        NPCID.FairyCritterPink or NPCID.FairyCritterGreen or NPCID.FairyCritterBlue => NPCID.FairyCritterPink,
+        NPCID.ScarletMacaw or NPCID.BlueMacaw => NPCID.ScarletMacaw,
+        NPCID.YellowCockatiel or NPCID.GrayCockatiel => NPCID.YellowCockatiel,
+        >= NPCID.BlackDragonfly and <= NPCID.YellowDragonfly => NPCID.BlackDragonfly,
+        NPCID.Squirrel or NPCID.SquirrelRed => NPCID.Squirrel,
+        NPCID.Penguin or NPCID.PenguinBlack => NPCID.Penguin,
+        NPCID.Bird or NPCID.BirdBlue or NPCID.BirdRed => NPCID.Bird,
+        _ => 0
+    };
+}
+
+/// <summary>
+/// Keeps critters' movement forms in one mapping entry, even without banners.
+/// </summary>
+internal static class CritterForms
+{
+    // These pairs are one creature changing how it moves, not separate species.
+    // Keep white ducks separate from brown ducks, and gold fish separate from
+    // normal fish unless the optional gold-critter rule combines them first.
+    internal static int Family(int id) => id switch
+    {
+        NPCID.Seagull or NPCID.Seagull2 => NPCID.Seagull,
+        NPCID.Grebe or NPCID.Grebe2 => NPCID.Grebe,
+        NPCID.Duck or NPCID.Duck2 => NPCID.Duck,
+        NPCID.DuckWhite or NPCID.DuckWhite2 => NPCID.DuckWhite,
+        NPCID.Goldfish or NPCID.GoldfishWalker => NPCID.Goldfish,
+        NPCID.GoldGoldfish or NPCID.GoldGoldfishWalker => NPCID.GoldGoldfish,
+        _ => 0
+    };
+}
+
+/// <summary>
 /// Defines Old One's Army species with multiple tiers; Betsy and exclusive helpers do not form tier groups.
 /// </summary>
 internal static class ArmyFamilies
 {
+    /// <summary>
+    /// Uses the same world milestones as vanilla's choice of army difficulty.
+    /// </summary>
+    internal static int ProgressionTier(bool hardmode, bool mechDefeated, bool golemDefeated) =>
+        !hardmode ? 1 : golemDefeated ? 3 : mechDefeated ? 2 : 1;
+
+    internal static int CurrentTier => ProgressionTier(Main.hardMode, NPC.downedMechBossAny, NPC.downedGolemBoss);
+
+    /// <summary>
+    /// Selects the progression-appropriate form; families without tier 1 use their earliest form.
+    /// Dark Mages have no tier 2, so they retain tier 1 until tier 3.
+    /// </summary>
+    internal static int ForTier(int id, int tier)
+    {
+        int family = Family(id);
+        if (family == 0)
+            return id;
+
+        tier = Math.Clamp(tier, 1, 3);
+        return family switch
+        {
+            NPCID.DD2GoblinT1 or NPCID.DD2GoblinBomberT1 or NPCID.DD2WyvernT1 or NPCID.DD2JavelinstT1
+                => family + tier - 1,
+            _ => tier == 3 ? family + 1 : family
+        };
+    }
+
     /// <summary>
     /// Returns a species' earliest tier ID as its grouping key, or zero when no tier grouping applies.
     /// </summary>

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Terraria;
 using Terraria.ID;
 
 namespace IndexedEnemyRandomizer;
@@ -39,24 +40,26 @@ internal static class GoldCritters
     internal static bool IsGold(int id) => NPCID.Sets.GoldCrittersCollection.Contains(id);
 
     /// <summary>
-    /// Chooses the gold subset with a ten-percent chance, then chooses uniformly inside the selected subset.
+    /// Uses vanilla's gold-critter chance and optional player-luck roll, then chooses a form within that subset.
     /// If only one subset exists, uses it directly; the supplied RNG returns values below its exclusive bound.
     /// </summary>
     /// <param name="members">Nonempty member list for a supported critter family.</param>
     /// <param name="next">Random integer provider taking an exclusive upper bound, such as Main.rand.Next.</param>
-    /// <returns>A concrete member, with ten-percent gold probability when both subsets exist.</returns>
-    internal static int Pick(IReadOnlyList<int> members, Func<int, int> next)
+    /// <param name="rollLuck">Nearby player's RollLuck; falls back to ordinary RNG when no player is available.</param>
+    /// <returns>A concrete member using vanilla rarity when both normal and gold subsets exist.</returns>
+    internal static int Pick(IReadOnlyList<int> members, Func<int, int> next, Func<int, int> rollLuck = null)
     {
-        // Split by gold status before rolling so families with several normal costumes still get exactly ten-percent gold.
+        // Roll rarity before appearance so extra normal colors do not dilute the gold chance.
         int[] gold = members.Where(IsGold).ToArray();
         int[] normal = members.Where(id => !IsGold(id)).ToArray();
-        // Handle incomplete families without selecting an empty subset; only two-sided families need the ten-way roll.
+        // Single-sided families need no rarity roll. Honor vanilla's live chance
+        // value (normally 400) instead of maintaining a separate mod percentage.
         int[] pool;
         if (gold.Length == 0)
             pool = normal;
         else if (normal.Length == 0)
             pool = gold;
-        else if (next(10) == 0)
+        else if ((rollLuck ?? next)(NPC.goldCritterChance) == 0)
             pool = gold;
         else
             pool = normal;

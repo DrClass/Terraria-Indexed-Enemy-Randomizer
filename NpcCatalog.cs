@@ -92,7 +92,8 @@ internal static class NpcCatalog
         NPCID.LittleCrimera,
         NPCID.BigStinger,
         NPCID.LittleStinger,
-        NPCID.HeavySkeleton,
+        // HeavySkeleton (-15) is an Armored Skeleton variant and belongs to Hardmode.
+        // BigBoned and ShortBones are ordinary pre-Hardmode Skeleton variants.
         NPCID.BigBoned,
         NPCID.ShortBones,
         NPCID.BigEater,

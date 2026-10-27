@@ -82,6 +82,10 @@ public sealed class MappedEventCredit : ModSystem
         // Unmapped helpers and excluded targets cannot impersonate an event source.
         if (!RandomizerSystem.TryFindSource(target, out int source))
             return NPCID.None;
+        // The inverse stores the earliest tier. Present accounting with the
+        // active event's form so tier-sensitive event behavior stays consistent.
+        if (RandomizerSystem.GetMapping().IsArmyGroup(source))
+            source = ArmyFamilies.ForTier(source, DD2Event.Ongoing ? DD2Event.OngoingDifficulty : ArmyFamilies.CurrentTier);
         // Negative net IDs are sizes/costumes; event APIs require an NPC type.
         return ContentSamples.NpcsByNetId.TryGetValue(source, out NPC sample) ? sample.type : source;
     }
