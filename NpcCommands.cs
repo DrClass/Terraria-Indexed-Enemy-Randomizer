@@ -176,10 +176,15 @@ public sealed class HintCommand : ModCommand
             return;
         // Choose a short encounter label; do not dump every member of a banner group into chat.
         var map = RandomizerSystem.GetMapping();
+        if (RandomizerSystem.LoadFailed)
+        {
+            caller.Reply("Saved mapping could not be loaded. Restore a backup or run /regeneratemapping.", Color.OrangeRed);
+            return;
+        }
         string target = GetHintName(map, id, describeVariants: false);
         NPC sample = ContentSamples.NpcsByNetId[id];
         // Explain why a target cannot be found before attempting an inverse lookup.
-        if (NpcCatalog.IsProtected(sample) && !(RandomizerSystem.TownNpcsIncluded && NpcCatalog.IsTownPoolCandidate(sample)))
+        if (!map.ContainsSource(id) && NpcCatalog.IsProtected(sample) && !(RandomizerSystem.TownNpcsIncluded && NpcCatalog.IsTownPoolCandidate(sample)))
         {
             caller.Reply($"{target}: not randomized.");
             return;
@@ -189,12 +194,12 @@ public sealed class HintCommand : ModCommand
             caller.Reply($"{target}: boss randomization disabled.");
             return;
         }
-        if (!NpcCatalog.CanReplace(sample, includeTownNpcs: RandomizerSystem.TownNpcsIncluded))
+        if (!map.ContainsSource(id) && !NpcCatalog.CanReplace(sample, includeTownNpcs: RandomizerSystem.TownNpcsIncluded))
         {
             caller.Reply($"{target}: not a standalone replacement.");
             return;
         }
-        // A forced-spawn fallback can randomize without ever being a target in the world's complete permutation.
+        // New NPCs never receive an invented fallback assignment.
         if (!RandomizerSystem.TryFindSource(id, out int source))
         {
             if (!SpecialSeedRules.Allowed(id, Main.tenthAnniversaryWorld))
@@ -249,5 +254,43 @@ public sealed class HintCommand : ModCommand
             return "";
 
         return " (random variant)";
+    }
+}
+
+/// <summary>Explicitly replaces the saved world mapping; ordinary updates never do.</summary>
+public sealed class RegenerateMappingCommand : ModCommand
+{
+    public override string Command => "regeneratemapping";
+    public override CommandType Type => CommandType.World | CommandType.Console;
+    public override string Usage => "/regeneratemapping [randomizer seed]";
+    public override string Description => "Back up and rebuild this world's mapping using current settings. Optional seed changes the shuffle.";
+    public override bool IsCaseSensitive => true;
+
+    public override void Action(CommandCaller caller, string input, string[] args)
+    {
+        // No argument reapplies current settings to the saved seed. An explicit
+        // seed offers a repeatable fresh shuffle without changing Terraria's seed.
+        string seed = args.Length == 0 ? RandomizerSystem.MappingSeed ?? Main.ActiveWorldFileData.SeedText
+            : string.Join(" ", args);
+        try
+        {
+            RandomizerSystem.Regenerate(seed);
+            caller.Reply("Mapping regenerated using current settings. Previous mapping backed up in IndexedEnemyRandomizer/MappingBackups. Saved with the world; existing NPCs remain unchanged.", Color.LightGreen);
+        }
+        catch (System.Exception error)
+        {
+            Mod.Logger.Error("Could not regenerate world mapping.", error);
+            caller.Reply("Could not regenerate mapping. Check the host's log for details.", Color.OrangeRed);
+        }
+    }
+}
+
+/// <summary>Explains a rejected save without regenerating behind the player's back.</summary>
+public sealed class MappingStatusPlayer : ModPlayer
+{
+    public override void OnEnterWorld()
+    {
+        if (RandomizerSystem.LoadFailed)
+            Main.NewText("Saved enemy mapping could not be loaded. Randomization is disabled. Restore a backup or run /regeneratemapping.", Color.OrangeRed);
     }
 }

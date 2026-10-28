@@ -2,6 +2,8 @@
 
 A Terraria mod that replaces enemies, bosses, and critters using the world seed. If a Bunny becomes a Zombie in your world, it will keep doing so after you save and reload.
 
+Mappings are stored with the world's tModLoader save data. Existing worlds get a saved mapping on their first load with this version; you do not need a new world. Mod updates and setting changes do not regenerate it. Keep the `.twld` file with your `.wld` when moving or backing up worlds.
+
 Built for tModLoader 2026.8 and Terraria 1.4.4.9.
 
 ## How it works
@@ -52,16 +54,23 @@ These commands are available to every player, without admin permissions.
 | `/spawnnpc Zombie` or `/spawnnpc 3` | Spawns that exact NPC beside you, bypassing its mapping. Boss limits still apply. |
 | `/hint Zombie` | Tells you which original enemy to look for to find Zombies. |
 | `/dumpmapping` | Saves the full mapping and settings to a text file. |
+| `/importmapping filename.dat` or `/importmapping filename.txt` | Restores a backup or a new mapping export, backing up the current mapping first. |
+| `/regeneratemapping` | Backs up the old mapping and rebuilds using current settings and the saved randomizer seed. |
+| `/regeneratemapping my-new-seed` | Rebuilds with a different randomizer seed; does not change Terraria's world seed. |
 
 Names are case-insensitive. You can use full names, IDs, or an unambiguous partial name. `/hint twins` also works when the Twins are grouped.
 
 Exports go in `IndexedEnemyRandomizer/MappingExports/` under the host's tModLoader save folder. On a dedicated server, the file is on the server. Chat shows the filename, not the host's full personal folder path.
 
+To undo an accidental regeneration, run `/importmapping` followed by the backup's filename (including `.dat`). The file must be in the host's `MappingBackups` or `MappingExports` folder. New text exports also contain restore data; older text exports cannot be imported. Import restores assignments, groups, and generation settings exactly, takes effect for future spawns, syncs to multiplayer clients, and is saved with the world. Editing the readable rows in an export does not change its embedded restore data. Invalid files are rejected without replacing your mapping.
+
+Regeneration backups go in `IndexedEnemyRandomizer/MappingBackups/`. The new mapping takes effect for future spawns and is saved with the world. Running the command with the same seed, settings, and rules produces the same mapping. Existing NPCs are not replaced. Multiplayer clients use the host's saved assignments.
+
 In the server console, omit the slash; direct spawns appear at world spawn. If another mod uses the same command name, add the mod prefix, for example `/IndexedEnemyRandomizer:hint Zombie`.
 
 ## Settings
 
-The host's settings apply to everyone. Changing which NPCs are included or grouped rebuilds the mapping for future spawns. Existing NPCs stay as they are.
+The host's settings apply to everyone. Pool inclusion, grouping, and progression-pool settings are used only when generating a mapping. Run `/regeneratemapping` to apply changes to an existing world. Other gameplay settings take effect without regenerating.
 
 | Setting | Default |
 | --- | --- |
@@ -92,7 +101,9 @@ Miscellaneous groupings combine Bees, Scorpions, Ducks, Fairies, Macaws, Cockati
 
 ## Mod compatibility
 
-Modded NPCs can be replaced with vanilla enemies, but are not replacement targets themselves. Their replacements use a seeded fallback based on the world's current progression. Progression safeguards and retreat fixes are designed for vanilla NPCs; other mods may need their own support.
+Unmapped NPCs, including modded NPCs and new vanilla NPCs added after generation, spawn unchanged. Missing variants are skipped; if a replacement has no available members, its original source spawns unchanged. Missing sources leave their assignments unused. Existing assignments are never repaired or reshuffled automatically.
+
+The save stores numeric NPC IDs. Terraria updates that reassign those IDs may require explicit regeneration. If saved mapping data is unreadable, randomization stops and the data is retained; restore a backup or explicitly regenerate rather than starting another world.
 
 ## Building and testing
 

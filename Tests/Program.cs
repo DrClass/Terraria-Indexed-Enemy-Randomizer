@@ -39,6 +39,7 @@ internal static class Program
     /// </summary>
     private static void Main()
     {
+        TestSavedMappings();
         TestCritterForms();
         TestMiscFamilies();
         TestStatueLootSettings();
@@ -147,6 +148,155 @@ internal static class Program
         Console.WriteLine($"PASS: {checks} checks (commands, inverse hints, mapping, boss limits, protected encounters, pillar credits, AI patch JIT validation).");
     }
 
+    private static void TestSavedMappings()
+    {
+        // tModLoader registers this built-in serializer during content loading;
+        // the standalone harness must perform that registration explicitly.
+        var serializerType = typeof(Terraria.ModLoader.IO.TagSerializer).Assembly.GetType("Terraria.ModLoader.IO.BoolTagSerializer", true)!;
+        typeof(Terraria.ModLoader.IO.TagSerializer).GetMethod("AddSerializer", BindingFlags.NonPublic | BindingFlags.Static)!
+            .Invoke(null, new[] { Activator.CreateInstance(serializerType, true) });
+        // Populate the metadata needed by runtime eligibility without opening a
+        // world. Include negative net IDs, which are real saved variant IDs.
+        for (int id = NPCID.NegativeIDCount + 1; id < NPCID.Count; id++)
+        {
+            if (id != 0)
+                ContentSamples.NpcsByNetId[id] = new NPC { type = NPCID.FromNetId(id), netID = id };
+        }
+        int[] ids = ContentSamples.NpcsByNetId.Where(pair => NpcCatalog.CanReplace(pair.Value))
+            .Select(pair => pair.Key).Order().ToArray();
+        var banners = ids.ToDictionary(id => id, id => Item.NPCtoBanner(ContentSamples.NpcsByNetId[id].BannerID()));
+        WorldMapping last = null;
+        foreach (bool separate in new[] { false, true })
+        foreach (bool grouped in new[] { false, true })
+        {
+            var original = new WorldMapping("saved regression", true, ids, banners: grouped ? banners : null,
+                combineTwins: true, separateProgressionPools: separate, groupGoldCritters: grouped,
+                groupArmyTiers: grouped, groupMiscVariants: grouped);
+            using var stream = new System.IO.MemoryStream();
+            Terraria.ModLoader.IO.TagIO.ToStream(original.Save(), stream);
+            Assert(stream.Length < 50000, "Compressed mapping is too large for world sync");
+            stream.Position = 0;
+            var restored = WorldMapping.Load(Terraria.ModLoader.IO.TagIO.FromStream(stream));
+            Assert(original.KnownIds.SequenceEqual(restored.KnownIds), "Saved IDs changed");
+            foreach (int source in original.KnownIds)
+            {
+                Assert(original.Members(source).SequenceEqual(restored.Members(source)), "Saved grouping changed");
+                Assert(original.Replacement(source, "old", true) == restored.Replacement(source, "different", false),
+                    "Assignments changed on save/load");
+                Assert(original.IsEarlySource(source) == restored.IsEarlySource(source), "Saved progression tier changed");
+                Assert(original.IsArmyGroup(source) == restored.IsArmyGroup(source)
+                    && original.IsGoldCritterGroup(source) == restored.IsGoldCritterGroup(source)
+                    && original.IsTwinsGroup(source) == restored.IsTwinsGroup(source)
+                    && original.IsScutlixGroup(source) == restored.IsScutlixGroup(source), "Saved spawn behavior changed");
+                Assert(restored.TryFindSource(source, out int back) &&
+                    original.TryFindSource(source, out int before) && back == before, "Inverse mapping changed on load");
+            }
+            Assert(restored.Replacement(99999, "new vanilla NPC", true) == 99999, "New NPC randomized");
+            Assert(restored.AvailableTargets(99999, _ => true).Length == 0, "New NPC acquired targets");
+            Assert(MappingExport.Render(original, original.KnownIds, id => id.ToString(), "test")
+                == MappingExport.Render(restored, restored.KnownIds, id => id.ToString(), "test"), "Reload changed export");
+            last = restored;
+        }
+
+        var variants = new WorldMapping("missing", false, [NPCID.Bee, NPCID.BeeSmall, NPCID.Zombie], groupMiscVariants: true);
+        variants = WorldMapping.Load(variants.Save());
+        Assert(variants.AvailableTargets(NPCID.Zombie, id => id != NPCID.Bee).SequenceEqual(new[] { (int)NPCID.BeeSmall }),
+            "Missing variant removed the entire target or selected another family");
+        Assert(variants.AvailableTargets(NPCID.Zombie, id => id == NPCID.Zombie).Length == 0,
+            "Missing target group did not fall back unchanged");
+        Assert(variants.AvailableTargets(NPCID.Bee, id => id != NPCID.Bee).Length == 0, "Removed source still randomized");
+        Assert(variants.Members(NPCID.Bee).Count == 2, "Availability changed saved membership");
+        var twins = new WorldMapping("missing partner", false, [NPCID.Wraith, NPCID.Retinazer, NPCID.Spazmatism], combineTwins: true);
+        Assert(twins.AvailableTargets(NPCID.Wraith, id => id != NPCID.Spazmatism).Length == 0,
+            "Missing partner left half a Twins encounter");
+
+        // Exercise the real world-load and network hooks with already-loaded
+        // state. None of these paths may consult live config or regenerate.
+        var config = new RandomizerConfig();
+        var options = MappingOptions.FromConfig(config);
+        var payload = new Terraria.ModLoader.IO.TagCompound
+        {
+            ["Version"] = 1, ["Seed"] = "saved regression", ["Options"] = options.Save(), ["Mapping"] = last.Save()
+        };
+        var system = new RandomizerSystem();
+        system.LoadWorldData(new Terraria.ModLoader.IO.TagCompound { ["SavedMapping"] = payload });
+        Assert(!RandomizerSystem.LoadFailed, "Valid saved mapping rejected");
+        // Both portable text exports and existing binary backups preserve the
+        // entire payload, including group behavior and captured settings.
+        string portable = "Human-readable report\n" + MappingImport.ExportData(payload);
+        var imported = MappingImport.ReadText(portable);
+        MappingImport.Validate(imported);
+        Assert(MappingImport.ExportData(imported) == MappingImport.ExportData(payload), "Import changed saved snapshot");
+        foreach (string badText in new[] { "Old report without restore data", "Saved mapping data: invalid!" })
+        {
+            bool rejected = false;
+            try { MappingImport.ReadText(badText); } catch { rejected = true; }
+            Assert(rejected, "Invalid text import accepted");
+        }
+        var invalidImport = new Terraria.ModLoader.IO.TagCompound { ["Version"] = 999 };
+        bool importRejected = false;
+        try { RandomizerSystem.ImportMapping(invalidImport); } catch { importRejected = true; }
+        Assert(importRejected && !RandomizerSystem.LoadFailed && RandomizerSystem.MappingSeed == "saved regression",
+            "Rejected import changed active world mapping");
+        string importDirectory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "mapping-import-" + Guid.NewGuid().ToString("N"));
+        System.IO.Directory.CreateDirectory(System.IO.Path.Combine(importDirectory, "MappingBackups"));
+        string backupPath = System.IO.Path.Combine(importDirectory, "MappingBackups", "test.dat");
+        try
+        {
+            Terraria.ModLoader.IO.TagIO.ToFile(payload, backupPath);
+            Assert(MappingImport.FindFile(importDirectory, "test.dat") == backupPath, "Backup filename lookup failed");
+            Assert(MappingImport.ExportData(Terraria.ModLoader.IO.TagIO.FromFile(backupPath)) == MappingImport.ExportData(payload),
+                "Binary backup changed snapshot");
+            foreach (string filename in new[] { "../test.dat", "..\\test.dat", "C:\\test.dat", "test.dat:stream", "missing.dat", "test.exe" })
+            {
+                bool rejected = false;
+                try { MappingImport.FindFile(importDirectory, filename); } catch { rejected = true; }
+                Assert(rejected, "Unsafe or missing import filename accepted");
+            }
+        }
+        finally
+        {
+            System.IO.File.Delete(backupPath);
+            System.IO.Directory.Delete(System.IO.Path.Combine(importDirectory, "MappingBackups"));
+            System.IO.Directory.Delete(importDirectory);
+        }
+        config.IncludeBosses = false;
+        config.CombineTwins = false;
+        Assert(RandomizerSystem.ActiveOptions.IncludeBosses && RandomizerSystem.ActiveOptions.Twins,
+            "Live config changed saved generation options");
+        var saved = new Terraria.ModLoader.IO.TagCompound();
+        system.SaveWorldData(saved);
+        Assert(saved.ContainsKey("SavedMapping"), "World save omitted mapping");
+        using var packet = new System.IO.MemoryStream();
+        system.NetSend(new System.IO.BinaryWriter(packet));
+        Assert(packet.Length < 50000, "World mapping packet is too large");
+        packet.Position = 0;
+        system.NetReceive(new System.IO.BinaryReader(packet));
+        Assert(RandomizerSystem.GetMapping().KnownIds.SequenceEqual(last.KnownIds), "Network sync changed mapping");
+        Assert(RandomizerSystem.CanRandomize(ContentSamples.NpcsByNetId[NPCID.BlueSlime]), "Loaded map cannot randomize a known source");
+
+        foreach (int corruption in Enumerable.Range(0, 4))
+        {
+            var invalid = last.Save();
+            if (corruption == 0) invalid["Version"] = 999;
+            if (corruption == 1) invalid.Remove("Groups");
+            if (corruption == 2) invalid.GetList<Terraria.ModLoader.IO.TagCompound>("Groups")[0]["Target"] = 999999;
+            if (corruption == 3) invalid.GetList<Terraria.ModLoader.IO.TagCompound>("Groups")[0]["Members"] = new[] { 0 };
+            var broken = new Terraria.ModLoader.IO.TagCompound
+            {
+                ["Version"] = 1, ["Seed"] = "broken", ["Options"] = options.Save(), ["Mapping"] = invalid
+            };
+            system.LoadWorldData(new Terraria.ModLoader.IO.TagCompound { ["SavedMapping"] = broken });
+            Assert(RandomizerSystem.LoadFailed && RandomizerSystem.GetMapping().KnownIds.Length == 0,
+                "Corrupt mapping silently regenerated");
+            var retained = new Terraria.ModLoader.IO.TagCompound();
+            system.SaveWorldData(retained);
+            Assert(object.ReferenceEquals(retained.GetCompound("SavedMapping"), broken), "Corrupt save was overwritten");
+        }
+        // Leave a valid frozen mapping installed for the spawn bookkeeping tests.
+        system.LoadWorldData(new Terraria.ModLoader.IO.TagCompound { ["SavedMapping"] = payload });
+    }
+
     /// <summary>
     /// Verifies that refactoring preserves the exact existing assignments across world and grouping options.
     /// </summary>
@@ -197,8 +347,8 @@ internal static class Program
             .Replace("Indexed Enemy Randomizer mapping\n", "Enemy Randomizer mapping\n");
         byte[] bytes = System.Text.Encoding.UTF8.GetBytes(report);
         string fingerprint = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
-        // Version 1.0.5 merges army tiers and updates export descriptions.
-        const string expected = "8218435D70C1BE15CD62A4217989D1FFE22177D975636E6E97C8E95755E86690";
+        // Version 1.0.6 leaves unknown sources unchanged and updates export descriptions.
+        const string expected = "BEF08C7898CF65A81860F60157A10C4EE1E7BB15E66ADBE4391D00E344E67BAE";
         Assert(fingerprint == expected, $"Mapping fingerprint changed: {fingerprint}");
     }
 
@@ -726,12 +876,12 @@ internal static class Program
             Assert(map.TryFindSource(NPCID.SkeletronHead, out int source) &&
                 !map.Members(source).Contains(NPCID.AngryBones), "Restriction checked representative only");
         }
-        // Fallback forced sources also obey the rules when absent from the permutation.
+        // Sources absent from the saved permutation keep their original IDs.
         var fallback = new WorldMapping("fallback", false, [NPCID.Wraith, NPCID.Pixie,
             NPCID.TheDestroyer, NPCID.Plantera, NPCID.Golem, NPCID.Mimic]);
         for (int seed = 0; seed < 100; seed++)
-            Assert(ProgressionRules.Allows(NPCID.VortexLarva,
-                fallback.Replacement(NPCID.VortexLarva, seed.ToString(), false)), "Fallback bypassed progression");
+            Assert(fallback.Replacement(NPCID.VortexLarva, seed.ToString(), false) == NPCID.VortexLarva,
+                "Unknown source acquired a fallback assignment");
     }
 
     /// <summary>
@@ -848,7 +998,8 @@ internal static class Program
             string report = MappingExport.Render(map, candidates, id => $"NPC [{id}]", "seed=" + seed);
             Assert(report.Contains("seed=" + seed) && report.Contains("PRE-HARDMODE") && report.Contains("HARDMODE"), "Export metadata/tiers");
             Assert(report.Split('\n').Count(line => line.StartsWith("NPC [")) == candidates.Length, "Export missing/duplicate source rows");
-            Assert(report.Contains($"NPC [{NPCID.GoldenSlime}] (fallback source) ->"), "Export omitted forced excluded source");
+            Assert(report.Contains($"NPC [{NPCID.GoldenSlime}] (unmapped; unchanged) -> NPC [{NPCID.GoldenSlime}]"),
+                "Export must identify unchanged unknown sources");
             Assert(report.Contains("The Twins (both):") == combined, "Export misrepresents paired spawn");
         }
 
@@ -1576,7 +1727,7 @@ internal static class Program
             foreach (int id in ids.Where(id => !NpcCatalog.AllowedInWorld(id, crimson)))
             {
                 Assert(!earlySection.Contains($"NPC [{id}]"), "Export placed opposite evil in early tier");
-                Assert(!report.Contains($"NPC [{id}] (fallback source)"), "Opposite evil still marked excluded in export");
+                Assert(!report.Contains($"NPC [{id}] (unmapped; unchanged)"), "Opposite evil still marked excluded in export");
             }
         }
     }
@@ -1623,8 +1774,7 @@ internal static class Program
             Assert(!map.IsEarlySource(forcedTarget),
                 "Forced opposite-evil Hardmode source did not get an allowed Hardmode target");
             int modTarget = map.Replacement(10000, "TestMod/Enemy", true);
-            Assert(NpcCatalog.IsPreHardmode(modTarget) && NpcCatalog.AllowedInWorld(modTarget, crimson),
-                "Modded fallback violates early-world restrictions");
+            Assert(modTarget == 10000, "Unmapped NPC received a new assignment");
         }
         Assert(signatures.Count > 100, "World seed/evil not reflected in mappings");
         Assert(SeededSelection.Shuffle("seed", "test", []).Count == 0, "Empty shuffle");

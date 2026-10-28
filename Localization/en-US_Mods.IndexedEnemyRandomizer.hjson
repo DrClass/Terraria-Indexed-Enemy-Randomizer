@@ -4,7 +4,7 @@ Configs: {
 
 		IncludeOppositeEvil: {
 			Label: Include opposite-evil enemies in Hardmode
-			Tooltip: Include all enemies from the other world evil in the Hardmode pool, including its pre-Hardmode enemies. In combined-pool mode they join the combined pool. Off excludes them from replacement targets. On by default. Changes mappings.
+			Tooltip: Include all enemies from the other world evil in the Hardmode pool, including its pre-Hardmode enemies. In combined-pool mode they join the combined pool. Off excludes them from replacement targets. On by default. Applies on first load or /regeneratemapping.
 		}
 
 		RandomizeTownShimmer: {
@@ -14,12 +14,12 @@ Configs: {
 
 		RandomizeTownNpcs: {
 			Label: Include town NPCs in randomization
-			Tooltip: Add ordinary resident town NPCs to the normal mapping pools. Their spawns can become enemies, and enemies can become town NPCs. Pets, rescue forms, and special NPCs remain protected. Off by default. Changes mappings.
+			Tooltip: Add ordinary resident town NPCs to the normal mapping pools. Their spawns can become enemies, and enemies can become town NPCs. Pets, rescue forms, and special NPCs remain protected. Off by default. Applies on first load or /regeneratemapping.
 		}
 
 		GroupOldOnesArmyTiers: {
 			Label: Group Old One's Army enemy tiers
-			Tooltip: Give each Old One's Army species one mapping across all tiers. Its earliest tier determines its pool. Spawn tier 2 after a mechanical boss and tier 3 after Golem, using the earliest available form when needed. Off keeps tiers separate. On by default. Changes mappings when toggled; progression only changes the spawned tier.
+			Tooltip: Give each Old One's Army species one mapping across all tiers. Its earliest tier determines its pool. Spawn tier 2 after a mechanical boss and tier 3 after Golem, using the earliest available form when needed. Off keeps tiers separate. On by default. Applies on first load or /regeneratemapping; progression only changes the spawned tier.
 		}
 
 		LimitBosses: {
@@ -29,12 +29,12 @@ Configs: {
 
 		GroupGoldCritters: {
 			Label: Group critters with their gold variants
-			Tooltip: Share one mapping for each critter family and its gold variants. Use vanilla gold-critter odds, normally 1 in 400, adjusted by the nearest living player's luck. Independent of banner grouping. On by default. Changing this rebuilds mappings.
+			Tooltip: Share one mapping for each critter family and its gold variants. Use vanilla gold-critter odds, normally 1 in 400, adjusted by the nearest living player's luck. Independent of banner grouping. On by default. Applies on first load or /regeneratemapping.
 		}
 
 		GroupMiscVariants: {
 			Label: Miscellaneous groupings
-			Tooltip: Group Bees, Scorpions, Ducks, Fairies, Macaws, Cockatiels, ordinary Dragonflies, Squirrels, Penguins, and Birds into their respective families. Choose a random member per spawn. Gold-critter odds retain priority. Off leaves existing banner, gold, and movement-form groups intact. On by default. Changes mappings.
+			Tooltip: Group Bees, Scorpions, Ducks, Fairies, Macaws, Cockatiels, ordinary Dragonflies, Squirrels, Penguins, and Birds into their respective families. Choose a random member per spawn. Gold-critter odds retain priority. Off leaves existing banner, gold, and movement-form groups intact. On by default. Applies on first load or /regeneratemapping.
 		}
 
 		EarlyEvilSolutionShimmer: {
@@ -54,12 +54,12 @@ Configs: {
 
 		SeparateProgressionPools: {
 			Label: Separate pre-Hardmode and Hardmode pools
-			Tooltip: On: keep separate progression pools. Off: shuffle all eligible NPCs together, allowing Hardmode and both world evils from the start. Boss restrictions and protected NPC exclusions still apply. Changing this rebuilds mappings for future spawns.
+			Tooltip: On: keep separate progression pools. Off: shuffle all eligible NPCs together, allowing Hardmode and both world evils from the start. Boss restrictions and protected NPC exclusions still apply. Applies on first load or /regeneratemapping.
 		}
 
 		IncludeBosses: {
 			Label: Include bosses in randomization
-			Tooltip: Include eligible bosses and event bosses in randomization. Off keeps their original spawns and removes them from replacement targets. On by default. Changing this changes mappings; existing bosses and normal summons remain available.
+			Tooltip: Include eligible bosses and event bosses in randomization. Off keeps their original spawns and removes them from replacement targets. On by default. Applies on first load or /regeneratemapping. Existing bosses and normal summons remain available.
 		}
 
 		BlockEarlyHardmodeStatueLoot: {
@@ -74,12 +74,12 @@ Configs: {
 
 		CombineTwins: {
 			Label: Treat the Twins as one encounter
-			Tooltip: Share one mapping for Retinazer and Spazmatism. Their replacement encounter spawns both Twins together. On by default. Changes the Hardmode mapping; direct NPC commands still spawn exactly the requested NPC.
+			Tooltip: Share one mapping for Retinazer and Spazmatism. Their replacement encounter spawns both Twins together. On by default. Applies on first load or /regeneratemapping; direct NPC commands still spawn exactly the requested NPC.
 		}
 
 		GroupNpcVariants: {
 			Label: Group NPC variants by banner
-			Tooltip: Treat NPCs sharing a banner as one mapping entry and randomly choose a variant per spawn. Respects the separate progression pools setting. Changing this rebuilds mappings for future spawns.
+			Tooltip: Treat NPCs sharing a banner as one mapping entry and randomly choose a variant per spawn. Respects the separate progression pools setting. Applies on first load or /regeneratemapping.
 		}
 
 		LegacyEventCredit: {

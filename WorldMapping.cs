@@ -9,10 +9,10 @@ namespace IndexedEnemyRandomizer;
 /// Owns the deterministic mapping and variant groups for one seed and configuration.
 /// Contains no live world progression state: defeating a boss or entering Hardmode never reshuffles it.
 /// </summary>
-internal sealed class WorldMapping
+internal sealed partial class WorldMapping
 {
     /// <summary>
-    /// Seed text retained for deterministic selection of sources outside the main permutation.
+    /// Seed that generated this mapping, retained as save metadata.
     /// </summary>
     private readonly string seed;
     /// <summary>
@@ -183,6 +183,8 @@ internal sealed class WorldMapping
     /// </summary>
     public bool IsEarlySource(int id)
     {
+        if (savedEarlyIds != null)
+            return savedEarlyIds.Contains(id);
         // A family's earliest tier owns its permanent pool. Later forms must
         // resolve to that same entry instead of disappearing when the event upgrades.
         int source = ProgressionSource(id);
@@ -191,7 +193,7 @@ internal sealed class WorldMapping
 
     internal int ProgressionSource(int id) => IsArmyGroup(id) ? ArmyFamilies.Family(id) : id;
 
-    public bool IsArmyGroup(int id) => GroupArmyTiers && ArmyFamilies.Family(id) != 0;
+    public bool IsArmyGroup(int id) => SavedKind(id, 5) ?? (GroupArmyTiers && ArmyFamilies.Family(id) != 0);
 
     /// <summary>
     /// Normalizes a known variant to its group key; unknown IDs retain their own identity.
@@ -207,23 +209,23 @@ internal sealed class WorldMapping
     /// <summary>
     /// Checks that the ID belongs to a two-member group containing precisely the two Twins.
     /// </summary>
-    public bool IsTwinsGroup(int id) => TwinsEncounter.IsTwin(id) && Members(id).Count == 2
-        && Members(id).All(TwinsEncounter.IsTwin);
+    public bool IsTwinsGroup(int id) => SavedKind(id, 1) ?? (TwinsEncounter.IsTwin(id) && Members(id).Count == 2
+        && Members(id).All(TwinsEncounter.IsTwin));
 
     /// <summary>
     /// Checks that the ID belongs to the paired Scutlix rider-and-mount group.
     /// </summary>
-    public bool IsScutlixGroup(int id) => ScutlixEncounter.IsMember(id) && Members(id).Count == 2
-        && Members(id).All(ScutlixEncounter.IsMember);
+    public bool IsScutlixGroup(int id) => SavedKind(id, 2) ?? (ScutlixEncounter.IsMember(id) && Members(id).Count == 2
+        && Members(id).All(ScutlixEncounter.IsMember));
 
     /// <summary>
     /// Recognizes both forms of the Truffle Worm, which share a mapping and spawn in normal form.
     /// </summary>
-    public bool IsTruffleWormGroup(int id) => NpcCatalog.IsTruffleWorm(id);
+    public bool IsTruffleWormGroup(int id) => SavedKind(id, 3) ?? NpcCatalog.IsTruffleWorm(id);
     /// <summary>
     /// Identifies families that choose gold versus normal appearance using vanilla rarity.
     /// </summary>
-    public bool IsGoldCritterGroup(int id) => GroupGoldCritters && GoldCritters.Family(id) != 0;
+    public bool IsGoldCritterGroup(int id) => SavedKind(id, 4) ?? (GroupGoldCritters && GoldCritters.Family(id) != 0);
 
     /// <summary>
     /// Allows an assignment only when every source variant can safely lead to every target variant.
@@ -246,7 +248,7 @@ internal sealed class WorldMapping
 
     /// <summary>
     /// Returns a seeded target representative, using the main permutation when possible.
-    /// Sources excluded from that permutation receive a deterministic progression-safe fallback.
+    /// Sources absent from the saved permutation remain unchanged.
     /// </summary>
     /// <param name="sourceNetId">Original species/variant ID, before randomization.</param>
     /// <param name="sourceIdentity">Stable identity used only if the source lacks a main-permutation entry.</param>
@@ -257,18 +259,9 @@ internal sealed class WorldMapping
         // Known entries ignore the caller's tier hint; forced early Hardmode spawns keep their own fixed mapping.
         if (mapping.TryGetValue(Representative(sourceNetId), out int target))
             return target;
-        // Special-seed-excluded and modded sources are still randomized. They do not
-        // displace entries in the complete permutation of eligible vanilla NPCs.
-        int[] pool;
-        if (!SeparateProgressionPools)
-            pool = AllSources;
-        else if (preHardmode)
-            pool = EarlySources;
-        else
-            pool = LateSources;
-
-        int[] allowedTargets = pool.Where(candidate => AllowedGroups(sourceNetId, candidate)).ToArray();
-        return SeededSelection.Pick(seed, sourceIdentity, allowedTargets, sourceNetId);
+        // Never invent an assignment for an NPC introduced after this map was
+        // saved. Unknown sources keep their original spawn until regeneration.
+        return sourceNetId;
     }
 
 }

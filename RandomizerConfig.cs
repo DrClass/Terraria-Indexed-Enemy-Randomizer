@@ -6,7 +6,8 @@ namespace IndexedEnemyRandomizer;
 
 /// <summary>
 /// Server-owned options for pool composition, encounter handling, and presentation.
-/// DefaultValue attributes supply tModLoader's serialized/reset defaults; map-affecting options are checked lazily.
+/// DefaultValue attributes supply tModLoader's serialized/reset defaults.
+/// Pool/grouping options are captured only when a world mapping is generated.
 /// </summary>
 public sealed class RandomizerConfig : ModConfig
 {

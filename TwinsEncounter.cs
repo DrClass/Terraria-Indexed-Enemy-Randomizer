@@ -46,7 +46,7 @@ internal static class TwinsEncounter
     /// <summary>
     /// Reads whether Twins are grouped into one mapping entry.
     /// </summary>
-    internal static bool Enabled => ModContent.GetInstance<RandomizerConfig>().CombineTwins;
+    internal static bool Enabled => RandomizerSystem.GetMapping().IsTwinsGroup(NPCID.Retinazer);
     /// <summary>
     /// Clears encounter links when world-specific state is discarded.
     /// </summary>

@@ -46,8 +46,7 @@ public sealed class SpawnMessages : ModSystem
             return source;
         // Preview the group deterministically without consuming RNG that the eventual spawn needs for its member roll.
         var map = RandomizerSystem.GetMapping();
-        return map.Replacement(source, sample.ModNPC?.FullName ?? source.ToString(CultureInfo.InvariantCulture),
-            sample.ModNPC == null ? map.IsEarlySource(source) : !Main.hardMode);
+        return map.AvailableTargets(source, RandomizerSystem.IsAvailable).FirstOrDefault(source);
     }
 
     /// <summary>
@@ -67,7 +66,8 @@ public sealed class SpawnMessages : ModSystem
             return NetworkText.FromLiteral("Scutlix and rider");
         if (map.IsTruffleWormGroup(id))
             id = NPCID.TruffleWorm;
-        return Lang.GetNPCName(NameId(map, id)).ToNetworkText();
+        int nameId = map.Members(id).FirstOrDefault(RandomizerSystem.IsAvailable, id);
+        return Lang.GetNPCName(nameId).ToNetworkText();
     }
 
     /// <summary>

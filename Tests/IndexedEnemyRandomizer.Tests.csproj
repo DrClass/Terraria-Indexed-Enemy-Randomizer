@@ -11,6 +11,8 @@
     <Compile Include="../SeededSelection.cs" Link="SeededSelection.cs" />
     <Compile Include="../NpcCatalog.cs" Link="NpcCatalog.cs" />
     <Compile Include="../WorldMapping.cs" Link="WorldMapping.cs" />
+    <Compile Include="../SavedMapping.cs" Link="SavedMapping.cs" />
+    <Compile Include="../MappingImport.cs" Link="MappingImport.cs" />
     <Compile Include="../ProgressionRules.cs" Link="ProgressionRules.cs" />
     <Compile Include="../EventProgressDisplay.cs" Link="EventProgressDisplay.cs" />
     <Compile Include="../MappedEventCredit.cs" Link="MappedEventCredit.cs" />

@@ -137,8 +137,8 @@ public sealed class RandomizedNPC : GlobalNPC
             return false;
         if (source is DirectNpcSpawnSource)
             return false;
-        if (!NpcCatalog.CanReplace(npc, includeTownNpcs: RandomizerSystem.TownNpcsIncluded))
-            return false;
+        // Eligibility comes from the saved map in PreAI/WillRandomize, not a
+        // potentially changed catalog in a newer mod release.
         if (NpcChildProjectiles.PreserveSpawn(npc.type, source, preserveChildren))
             return false;
 
@@ -199,13 +199,16 @@ public sealed class RandomizedNPC : GlobalNPC
         if (intent.Suppress)
             return Cancel(npc);
 
-        // Recheck current eligibility so configuration changes cannot force a now-excluded NPC through the pending path.
+        // Recheck the saved mapping and installed IDs before applying the pending spawn.
         bool randomize = intent.Randomize && RandomizerSystem.CanRandomize(npc);
         bool originalBoss = BossRules.IsBossRoot(npc);
-        if (randomize && TwinsEncounter.Enabled && TwinsEncounter.IsTwin(npc.type))
-            SuppressPairedSource(npc, intent.Tick, Main.npc);
         // Select the actual variant before checking limits, because the candidate's final encounter family matters.
         int replacement = randomize ? RandomizerSystem.Replacement(npc) : npc.netID;
+        // A missing saved replacement means an untouched original spawn, not
+        // SetDefaults on itself or suppression of its normal encounter partner.
+        randomize = randomize && replacement != npc.netID;
+        if (randomize && TwinsEncounter.Enabled && TwinsEncounter.IsTwin(npc.type))
+            SuppressPairedSource(npc, intent.Tick, Main.npc);
         bool twins = randomize && TwinsEncounter.Enabled && TwinsEncounter.IsTwin(replacement);
         bool scutlix = randomize && replacement == NPCID.ScutlixRider;
         NPC candidate = randomize ? ContentSamples.NpcsByNetId[replacement] : npc;

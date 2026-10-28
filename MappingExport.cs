@@ -32,7 +32,7 @@ internal static class MappingExport
         text.AppendLine("Direction: original spawn -> replacement. IDs are in brackets.");
         text.AppendLine("Variants: choose one listed member randomly. Twins and Scutlix encounters: spawn BOTH listed members.");
         text.AppendLine("Grouped source members share the same replacement; each source ID is listed below.");
-        text.AppendLine("Fallback sources cannot be targets in this world, but forced spawns still randomize.");
+        text.AppendLine("Unmapped NPCs spawn unchanged. Missing variants are skipped; if no replacement is available, the original spawns unchanged.");
         text.AppendLine("Protected NPCs/encounter parts are not randomized and are not mapping entries.");
         // Sort and deduplicate source IDs for a stable, reviewable report, then put the early tier first.
         foreach (var tier in sources.Distinct().OrderBy(id => id)
@@ -68,7 +68,7 @@ internal static class MappingExport
                 if (map.IsScutlixGroup(source))
                     annotation = " (Scutlix encounter source)";
                 if (!map.TryFindSource(source, out _))
-                    annotation += " (fallback source)";
+                    annotation += " (unmapped; unchanged)";
                 text.AppendLine($"{label(source)}{annotation} -> {result}");
             }
         }
@@ -110,20 +110,28 @@ public sealed class DumpMappingCommand : ModCommand
         }
         // Include the seed and settings that explain the report so it can be reviewed outside the running game.
         var config = ModContent.GetInstance<RandomizerConfig>();
+        RandomizerSystem.GetMapping();
+        if (RandomizerSystem.LoadFailed || RandomizerSystem.ActiveOptions == null)
+        {
+            caller.Reply("No readable saved mapping. Restore a backup or run /regeneratemapping.", Color.OrangeRed);
+            return;
+        }
+        var options = RandomizerSystem.ActiveOptions;
         string metadata = $"World: {Main.worldName}\nSeed: {Main.ActiveWorldFileData.SeedText}\n"
             + $"Mod version: {Mod.Version}\nWorld evil: {(WorldGen.crimson ? "Crimson" : "Corruption")}\n"
-            + $"Celebration flag: {Main.tenthAnniversaryWorld}\nGroup variants: {config.GroupNpcVariants}\n"
-            + $"Combine Twins: {config.CombineTwins}\nLegacy event credit: {config.LegacyEventCredit}\n"
-            + $"Include bosses: {config.IncludeBosses}\n"
+            + $"Mapping seed: {RandomizerSystem.MappingSeed}\nSaved mapping options (config changes require regeneration):\n"
+            + $"Group variants: {options.Banners}\n"
+            + $"Combine Twins: {options.Twins}\nLegacy event credit: {config.LegacyEventCredit}\n"
+            + $"Include bosses: {options.IncludeBosses}\n"
             + $"Block early Hardmode statue loot: {config.BlockEarlyHardmodeStatueLoot}\n"
             + $"Reduce statue loot: {config.ReduceStatueLoot}\n"
             + $"Preserve NPC children: {config.PreserveNpcChildren}\nLimit minibosses: {config.LimitMiniBosses}\n"
-            + $"Limit bosses: {config.LimitBosses}\nGroup gold critters: {config.GroupGoldCritters}\n"
-            + $"Group Old One's Army tiers: {config.GroupOldOnesArmyTiers}\n"
-            + $"Group miscellaneous variants: {config.GroupMiscVariants}\n"
-            + $"Include opposite evil: {config.IncludeOppositeEvil}\nRandomize town NPCs: {config.RandomizeTownNpcs}\n"
+            + $"Limit bosses: {config.LimitBosses}\nGroup gold critters: {options.Gold}\n"
+            + $"Group Old One's Army tiers: {options.Army}\n"
+            + $"Group miscellaneous variants: {options.Misc}\n"
+            + $"Include opposite evil: {options.OppositeEvil}\nRandomize town NPCs: {options.TownNpcs}\n"
             + $"Randomize town shimmer: {config.RandomizeTownShimmer}\n"
-            + $"Separate progression pools: {config.SeparateProgressionPools}\n"
+            + $"Separate progression pools: {options.Separate}\n"
             + $"Legacy pillar credit: {config.LegacyPillarCredit}\nExported (UTC): {DateTime.UtcNow:O}";
         string report = MappingExport.Render(RandomizerSystem.GetMapping(), RandomizerSystem.EligibleSources,
             NpcCommandNames.Label, metadata);
@@ -133,7 +141,7 @@ public sealed class DumpMappingCommand : ModCommand
             string directory = Path.Combine(Main.SavePath, "IndexedEnemyRandomizer", "MappingExports");
             Directory.CreateDirectory(directory);
             string path = Path.Combine(directory, $"mapping-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.txt");
-            File.WriteAllText(path, report, new UTF8Encoding(false));
+            File.WriteAllText(path, report + MappingImport.ExportData(RandomizerSystem.ExportSnapshot()), new UTF8Encoding(false));
             // Only reveal the basename and relative save-folder location in chat, never a Windows user-profile path.
             caller.Reply($"Mapping saved: {Path.GetFileName(path)} (world host save folder: IndexedEnemyRandomizer/MappingExports)", Color.LightGreen);
         }
